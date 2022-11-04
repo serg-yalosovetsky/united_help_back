@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Your Project API
+  version: 1.0.0
+  description: Your project description
+paths:
+  /events/:
+    get:
+      operationId: events_list
+      tags:
+      - events
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+          description: ''
+    post:
+      operationId: events_create
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Event'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Event'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+components:
+  schemas:
+    EmploymentEnum:
+      enum:
+      - 0
+      - 1
+      - 2
+      type: integer
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        enabled:
+          type: boolean
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        reg_date:
+          type: string
+          format: date-time
+          readOnly: true
+        start_time:
+          type: string
+          format: date-time
+          readOnly: true
+        end_time:
+          type: string
+          format: date-time
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        city:
+          type: integer
+        location:
+          type: string
+          maxLength: 255
+        employment:
+          $ref: '#/components/schemas/EmploymentEnum'
+        manager:
+          type: integer
+        volunteers:
+          type: array
+          items:
+            type: integer
+        skills:
+          type: array
+          items:
+            type: integer
+        required_members:
+          type: integer
+      required:
+      - city
+      - description
+      - employment
+      - end_time
+      - id
+      - image
+      - location
+      - manager
+      - name
+      - reg_date
+      - required_members
+      - start_time
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
