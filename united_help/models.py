@@ -1,19 +1,16 @@
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
+from django.contrib.auth.models import User as DjangoUser
 
-
-class User(models.Model):
-    name = models.CharField(max_length=255)
+class User(DjangoUser):
+    # name = models.CharField(max_length=255)
     active = models.BooleanField(default=True)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True,)
     phone = PhoneNumberField(null=True, blank=True, unique=False)
     nickname = models.CharField(max_length=255, null=True, blank=True,)
     telegram_phone = PhoneNumberField(null=True, blank=True, unique=False)
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
-    email = models.CharField(max_length=255)
-    password = models.CharField(max_length=255)
     reg_date = models.DateTimeField(auto_now_add=True)
-    last_time_online = models.DateTimeField(auto_now=True)
     image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
     skills = models.ManyToManyField('Skill', related_name='user_skills', blank=True)
 
@@ -56,7 +53,7 @@ class Event(models.Model):
     reg_date = models.DateTimeField(auto_now_add=True)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to='user_images/')
+    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
     city = models.ForeignKey('City', verbose_name='City', on_delete=models.CASCADE)
     location = models.CharField(max_length=255)
     employment = models.IntegerField(choices=Employments.choices)
