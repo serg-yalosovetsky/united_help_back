@@ -11,7 +11,7 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
-                  'employment', 'manager', 'volunteers', 'skills',
+                  'employment', 'owner', 'volunteers', 'skills',
                   'required_members',
                   )
         read_only_fields = ('id',)
@@ -59,20 +59,88 @@ class CitySerializer(serializers.ModelSerializer):
 
 class SkillSerializer(serializers.ModelSerializer):
 
+    def is_not_self_parent(self, instance, validated_data, parents_skill):
+        parents_skill = parents_skill or validated_data.get('parents')
+        print(f'{instance=} {parents_skill=} ')
+        if isinstance(parents_skill, list):
+            for parent_skill in parents_skill:
+                print(f'{parent_skill=} ')
+                print(f'{parent_skill.id=} {instance.id=}')
+                if parent_skill.id == instance.id:
+                    print('selfparent')
+                    return instance
+
+                if not parent_skill.parents.exists():
+                    print(f'continue {parent_skill=}')
+                    continue
+
+                print(f'recurse {parent_skill=}')
+                parents_skill = parent_skill.parents.all()
+                return self.is_not_self_parent(instance, validated_data, list(parents_skill))
+        print('is valid')
+        if validated_data.get('parent'):
+            instance.parents.set(validated_data.get('parents'))
+            print(validated_data.get('parents'))
+
+            instance.save()
+        # return super().update(instance, validated_data)
+        return instance
+
+    # def update(self, instance, validated_data: dict):
+    #     print()
+    #     try:
+    #         ret = self.is_not_self_parent(instance, validated_data, parents_skill=None)
+    #     except RecursionError:
+    #         return instance
+    #     return ret
     class Meta:
         model = Skill
-        fields = ('id', 'name', 'description', 'parent',
+        fields = ('id', 'name', 'description', 'parents',
                   )
         read_only_fields = ('id',)
 
 
 class ProfileSerializer(serializers.ModelSerializer):
 
+    def validate_role(self, value):
+        """
+        Check only admin can create admins.
+        """
+        if request := self.context.get('request'):
+            user = User.objects.get(id=request.user.id)
+            if user.profile_set.filter(role=value).exists():
+                raise serializers.ValidationError(f"You already have role {Profile.Roles.choices[value][1]}")
+            if value == 0 or value == 2:
+                if not user.profile_set.filter(role=0).exists():
+                    raise serializers.ValidationError("You does not have permission to create admin or organizers")
+
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
+                  )
+        read_only_fields = ('id', 'rating', 'scores', 'active',)
+
+
+class ActivateProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
+                  )
+        read_only_fields = ('id', 'user', 'role', 'rating', 'scores',)
+
+
+class ChangeScoresSerializer(serializers.ModelSerializer):
+    def validate_scores(self, value):
+        if value > 5 or value < -5:
+            raise serializers.ValidationError("You rate with invalid scores")
+        return value
+
     class Meta:
         model = Profile
         fields = ('id', 'user', 'role', 'scores', 'rating',
                   )
-        read_only_fields = ('id', 'rating',)
+        read_only_fields = ('id', 'user', 'role', 'rating',)
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -81,5 +149,5 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'event', 'user', 'parent', 'text'
                   )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'user')
 

@@ -2,6 +2,7 @@ from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from django.contrib.auth.models import User as DjangoUser
 
+
 class User(DjangoUser):
     # name = models.CharField(max_length=255)
     active = models.BooleanField(default=True)
@@ -23,10 +24,15 @@ class Profile(models.Model):
         organizer = 2
         refugee = 3
 
-    user = models.ForeignKey('User', verbose_name='Manager', on_delete=models.CASCADE)
+    user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     role = models.IntegerField(choices=Roles.choices)
-    scores = models.IntegerField()
-    rating = models.FloatField()
+    scores = models.IntegerField(default=0)
+    users_voted = models.ManyToManyField('User', verbose_name='User', blank=True)
+    rating = models.FloatField(default=0)
+    active = models.BooleanField(default=False)
+
+    def repr(self):
+        return f'<Profile: {self.user} {self.role}>'
 
 
 class City(models.Model):
@@ -37,7 +43,7 @@ class City(models.Model):
 class Skill(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
+    parents = models.ManyToManyField('self', blank=True)
 
 
 class Event(models.Model):
@@ -57,7 +63,7 @@ class Event(models.Model):
     city = models.ForeignKey('City', verbose_name='City', on_delete=models.CASCADE)
     location = models.CharField(max_length=255)
     employment = models.IntegerField(choices=Employments.choices)
-    manager = models.ForeignKey('Profile', verbose_name='Manager', on_delete=models.CASCADE)
+    owner = models.ForeignKey('Profile', verbose_name='Owner', on_delete=models.CASCADE)
     volunteers = models.ManyToManyField('Profile', related_name='user_profiles', blank=True)
     skills = models.ManyToManyField('Skill', related_name='required_skills', blank=True)
     required_members = models.IntegerField()
