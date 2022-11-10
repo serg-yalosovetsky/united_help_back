@@ -17,6 +17,16 @@ class EventsView(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 
+class EventSubscribeView(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrReadOnly]
+    serializer_class = EventSerializer
+    queryset = Event.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        print('update')
+        return super().update(request, *args, **kwargs)
+
+
 class UserView(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrCreateOnly]
     serializer_class = UserSerializer

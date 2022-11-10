@@ -17,6 +17,14 @@ class EventSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+class EventSubscribeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Event
+        fields = ('id', 'volunteers', )
+        read_only_fields = ('id',)
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
@@ -59,44 +67,31 @@ class CitySerializer(serializers.ModelSerializer):
 
 class SkillSerializer(serializers.ModelSerializer):
 
-    def is_not_self_parent(self, instance, validated_data, parents_skill):
-        parents_skill = parents_skill or validated_data.get('parents')
-        print(f'{instance=} {parents_skill=} ')
-        if isinstance(parents_skill, list):
-            for parent_skill in parents_skill:
-                print(f'{parent_skill=} ')
-                print(f'{parent_skill.id=} {instance.id=}')
-                if parent_skill.id == instance.id:
-                    print('selfparent')
-                    return instance
+    def is_self_parent(self, instance_orig, inst, stack: list):
+        if instance_orig.id == inst.id:
+            return True
+        if instance_orig.id in stack:
+            return True
+        stack.append(inst.id)
+        if not inst.parents:
+            return False
+        else:
+            for parent in inst.parents:
+                return self.is_self_parent(instance_orig, parent, stack)
 
-                if not parent_skill.parents.exists():
-                    print(f'continue {parent_skill=}')
-                    continue
+    def update(self, instance, validated_data: dict):
+        print()
+        self_parents = []
+        if isinstance(parents := validated_data.get('parents'), list):
+            for parent in parents:
+                self_parents.append(self.is_self_parent(instance, parent, []))
+            if any(self_parents):
+                validated_data.pop('parents')
+        return super().update(instance, validated_data)
 
-                print(f'recurse {parent_skill=}')
-                parents_skill = parent_skill.parents.all()
-                return self.is_not_self_parent(instance, validated_data, list(parents_skill))
-        print('is valid')
-        if validated_data.get('parent'):
-            instance.parents.set(validated_data.get('parents'))
-            print(validated_data.get('parents'))
-
-            instance.save()
-        # return super().update(instance, validated_data)
-        return instance
-
-    # def update(self, instance, validated_data: dict):
-    #     print()
-    #     try:
-    #         ret = self.is_not_self_parent(instance, validated_data, parents_skill=None)
-    #     except RecursionError:
-    #         return instance
-    #     return ret
     class Meta:
         model = Skill
-        fields = ('id', 'name', 'description', 'parents',
-                  )
+        fields = ('id', 'name', 'parents',)
         read_only_fields = ('id',)
 
 

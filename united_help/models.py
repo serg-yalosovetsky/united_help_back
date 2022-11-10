@@ -26,13 +26,20 @@ class Profile(models.Model):
 
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     role = models.IntegerField(choices=Roles.choices)
-    scores = models.IntegerField(default=0)
-    users_voted = models.ManyToManyField('User', verbose_name='User', blank=True)
     rating = models.FloatField(default=0)
     active = models.BooleanField(default=False)
 
     def repr(self):
         return f'<Profile: {self.user} {self.role}>'
+
+
+class Voting(models.Model):
+    voting = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
+    applicant = models.ForeignKey('Profile', verbose_name='Profile', on_delete=models.CASCADE)
+    scores = models.IntegerField(default=0)
+
+    def repr(self):
+        return f'<Vote: {self.voting} {self.applicant}  {self.scores}>'
 
 
 class City(models.Model):
@@ -42,8 +49,9 @@ class City(models.Model):
 
 class Skill(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField()
+    # description = models.TextField()
     parents = models.ManyToManyField('self', blank=True)
+    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
 
 
 class Event(models.Model):
@@ -67,6 +75,7 @@ class Event(models.Model):
     volunteers = models.ManyToManyField('Profile', related_name='user_profiles', blank=True)
     skills = models.ManyToManyField('Skill', related_name='required_skills', blank=True)
     required_members = models.IntegerField()
+    # TODO user can subscribe to organizer profile
 
 
 class Comment(models.Model):
