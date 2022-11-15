@@ -21,8 +21,8 @@ class EventSubscribeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ('id', 'volunteers', )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'enabled', 'name', 'volunteers', 'description', 'required_members',)
+        fields = ('id', 'enabled', 'name', 'description', 'volunteers', 'required_members',)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -68,25 +68,28 @@ class CitySerializer(serializers.ModelSerializer):
 class SkillSerializer(serializers.ModelSerializer):
 
     def is_self_parent(self, instance_orig, inst, stack: list):
+        print(f'{instance_orig=} {inst=} {stack=}')
         if instance_orig.id == inst.id:
             return True
-        if instance_orig.id in stack:
+        if inst.id in stack:
             return True
         stack.append(inst.id)
         if not inst.parents:
             return False
         else:
-            for parent in inst.parents:
+            for parent in inst.parents.all():
                 return self.is_self_parent(instance_orig, parent, stack)
 
     def update(self, instance, validated_data: dict):
-        print()
-        self_parents = []
-        if isinstance(parents := validated_data.get('parents'), list):
-            for parent in parents:
-                self_parents.append(self.is_self_parent(instance, parent, []))
-            if any(self_parents):
-                validated_data.pop('parents')
+        # TODO разобраться с тупой хуйней, когда при проверке зацикливания родителей какого-то
+        #  хуя объект при назначении родителя становится родителем сам для своего родителя
+        # self_parents = []
+        # if isinstance(parents := validated_data.get('parents'), list):
+        #     for parent in parents:
+        #         self_parent = self.is_self_parent(instance, parent, [instance.id])
+        #         if self_parent:
+        #             validated_data.pop('parents')
+        #             break
         return super().update(instance, validated_data)
 
     class Meta:
@@ -105,15 +108,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             user = User.objects.get(id=request.user.id)
             if user.profile_set.filter(role=value).exists():
                 raise serializers.ValidationError(f"You already have role {Profile.Roles.choices[value][1]}")
-            if value == 0 or value == 2:
-                if not user.profile_set.filter(role=0).exists():
+            if value == Profile.Roles.admin:
+                if not user.profile_set.filter(role=Profile.Roles.admin).exists():
                     raise serializers.ValidationError("You does not have permission to create admin or organizers")
 
     class Meta:
         model = Profile
-        fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
+        fields = ('id', 'user', 'role', 'rating', 'active',
                   )
-        read_only_fields = ('id', 'rating', 'scores', 'active',)
+        read_only_fields = ('id', 'user', 'rating', 'active',)
 
 
 class ActivateProfileSerializer(serializers.ModelSerializer):

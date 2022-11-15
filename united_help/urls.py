@@ -21,12 +21,12 @@ from united_help import views
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
-from united_help.views import ActivateProfileView
+from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
 router.register(r'profiles', views.ProfileView)
-router.register(r'events', views.EventsView)
+# router.register(r'events', views.EventsView)
 router.register(r'cities', views.CityView)
 router.register(r'skills', views.SkillView)
 router.register(r'comments', views.CommentView)
@@ -46,7 +46,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
     path('api-auth/', include('rest_framework.urls')),
+    re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
     path('', include(router.urls)),
+    re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
+
     # Include default login and logout views for use with the browsable API. 
     # Optional, but useful if your API requires authentication and you want to use the browsable API.
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
@@ -57,6 +60,8 @@ urlpatterns = [
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('activate-profile/', ActivateProfileView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('events/<int:pk>/subscribe', EventSubscribeView.as_view()),
+    path('events/<int:pk>/unsubscribe', EventUnsubscribeView.as_view()),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),

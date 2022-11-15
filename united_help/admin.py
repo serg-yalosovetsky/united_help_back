@@ -21,7 +21,7 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ('id', "name", "parents",)
+    list_display = ('id', "name", )
     list_display_links = ('id', "name",)
     search_fields = ["name", ]
 

@@ -15,6 +15,12 @@ class User(DjangoUser):
     image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
     skills = models.ManyToManyField('Skill', related_name='user_skills', blank=True)
 
+    def __repr__(self):
+        return f'User_{self.id} {self.username}'
+
+    def __str__(self):
+        return repr(self)
+
 
 class Profile(models.Model):
 
@@ -27,10 +33,13 @@ class Profile(models.Model):
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     role = models.IntegerField(choices=Roles.choices)
     rating = models.FloatField(default=0)
-    active = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
 
-    def repr(self):
+    def __repr__(self):
         return f'<Profile: {self.user} {self.role}>'
+
+    def __str__(self):
+        return repr(self)
 
 
 class Voting(models.Model):
@@ -38,13 +47,22 @@ class Voting(models.Model):
     applicant = models.ForeignKey('Profile', verbose_name='Profile', on_delete=models.CASCADE)
     scores = models.IntegerField(default=0)
 
-    def repr(self):
+    def __repr__(self):
         return f'<Vote: {self.voting} {self.applicant}  {self.scores}>'
+
+    def __str__(self):
+        return repr(self)
 
 
 class City(models.Model):
     city = models.CharField(max_length=255)
     alias = models.TextField()
+
+    def __repr__(self):
+        return f'City {self.city}'
+
+    def __str__(self):
+        return repr(self)
 
 
 class Skill(models.Model):
@@ -52,6 +70,12 @@ class Skill(models.Model):
     # description = models.TextField()
     parents = models.ManyToManyField('self', blank=True)
     image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
+
+    def __repr__(self):
+        return f'Skill {self.name}'
+
+    def __str__(self):
+        return repr(self)
 
 
 class Event(models.Model):
@@ -77,9 +101,21 @@ class Event(models.Model):
     required_members = models.IntegerField()
     # TODO user can subscribe to organizer profile
 
+    def __repr__(self):
+        return f'Event_{self.id} {self.name}'
+
+    def __str__(self):
+        return repr(self)
+
 
 class Comment(models.Model):
     event = models.ForeignKey('Event', verbose_name='Event', on_delete=models.CASCADE)
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     text = models.TextField()
+
+    def __repr__(self):
+        return f'Comment{self.id} {self.text} on {self.event}'
+
+    def __str__(self):
+        return repr(self)
