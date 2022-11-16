@@ -53,9 +53,9 @@ class EventsView(viewsets.ModelViewSet):
             queryset = queryset.filter(city__alias__contains=city)
         if skill_objs:
             if str_to_bool(skills_inclusive):
-                queryset = queryset.filter(skills_contain=skills)
+                queryset = queryset.filter(skills__contains=skills)
             else:
-                queryset = queryset.filter(skills_in=skills)
+                queryset = queryset.filter(skills__in=skills)
         if start_time:
             with suppress(ValueError):
                 start_time_dt = dt.strptime(start_time, DATETIME_FORMAT)

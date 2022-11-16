@@ -108,6 +108,19 @@ class Event(models.Model):
         return repr(self)
 
 
+class EventLog(models.Model):
+    event = models.ForeignKey('Event', on_delete=models.CASCADE)
+    volunteers_subscribed = models.ManyToManyField('Profile', related_name='profiles_subscribed', blank=True)
+    volunteers_attended = models.ManyToManyField('Profile', related_name='profiles_attended', blank=True)
+    happened = models.BooleanField(default=True)
+
+    def __repr__(self):
+        return f'EventLog_{self.id} {self.event}'
+
+    def __str__(self):
+        return repr(self)
+
+
 class Comment(models.Model):
     event = models.ForeignKey('Event', verbose_name='Event', on_delete=models.CASCADE)
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
