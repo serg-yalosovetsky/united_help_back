@@ -6,14 +6,12 @@ from django.contrib.auth.models import User as DjangoUser
 class User(DjangoUser):
     # name = models.CharField(max_length=255)
     active = models.BooleanField(default=True)
-    description = models.TextField(null=True, blank=True,)
     phone = PhoneNumberField(null=True, blank=True, unique=False)
     nickname = models.CharField(max_length=255, null=True, blank=True,)
     telegram_phone = PhoneNumberField(null=True, blank=True, unique=False)
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
     reg_date = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
-    skills = models.ManyToManyField('Skill', related_name='user_skills', blank=True)
+
 
     def __repr__(self):
         return f'User_{self.id} {self.username}'
@@ -34,6 +32,10 @@ class Profile(models.Model):
     role = models.IntegerField(choices=Roles.choices)
     rating = models.FloatField(default=0)
     active = models.BooleanField(default=True)
+    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
+    skills = models.ManyToManyField('Skill', related_name='user_skills', blank=True)
+    description = models.TextField(null=True, blank=True,)
+
 
     def __repr__(self):
         return f'<Profile: {self.user} {self.role}>'

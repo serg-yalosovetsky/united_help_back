@@ -46,9 +46,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
     path('api-auth/', include('rest_framework.urls')),
-    re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
+    path('events/', views.EventsView.as_view({'get': 'list'})),
     path('', include(router.urls)),
-    re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
+    # re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
 
     # Include default login and logout views for use with the browsable API. 
     # Optional, but useful if your API requires authentication and you want to use the browsable API.
