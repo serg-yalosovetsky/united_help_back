@@ -26,11 +26,21 @@ from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsu
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
 router.register(r'profiles', views.ProfileView)
-# router.register(r'events', views.EventsView)
+router.register(r'events', views.EventsView, basename='events')
 router.register(r'cities', views.CityView)
 router.register(r'skills', views.SkillView)
 router.register(r'comments', views.CommentView)
 # router.register(r'groups', views.GroupViewSet)
+# events_list = views.EventsView.as_view({
+#     'get': 'list',
+#     'post': 'create'
+# })
+# event_detail = views.EventsView.as_view({
+#     'get': 'retrieve',
+#     'put': 'update',
+#     'patch': 'partial_update',
+#     'delete': 'destroy'
+# })
 
 # Rename views to avoid conflict with app views
 from rest_framework.authtoken import views as rest_views
@@ -46,7 +56,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
     path('api-auth/', include('rest_framework.urls')),
-    path('events/', views.EventsView.as_view({'get': 'list'})),
+    path('events/', views.EventsView.as_view({'get': 'list', })),
+    # path('events/', events_list, name='snippet-list'),
+    # path('events/<int:pk>/', event_detail, name='snippet-detail'),
     path('', include(router.urls)),
     # re_path('^events/(?P<enabled>.+)/$', views.EventsView.as_view({'get': 'list'})),
 
