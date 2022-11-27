@@ -13,15 +13,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
 from rest_framework import routers
 
-from united_help import views
+from united_help import views, settings
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
-from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView
+from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -56,7 +57,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='drf')),
     path('api-auth/', include('rest_framework.urls')),
-    path('events/', views.EventsView.as_view({'get': 'list', })),
+    # path('events/', views.EventsView.as_view({'get': 'list', })),
     # path('events/', events_list, name='snippet-list'),
     # path('events/<int:pk>/', event_detail, name='snippet-detail'),
     path('', include(router.urls)),
@@ -73,8 +74,9 @@ urlpatterns = [
     path('activate-profile/', ActivateProfileView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('events/<int:pk>/subscribe', EventSubscribeView.as_view()),
+    path('events/subscribed', EventsSubscribedView.as_view()),
     path('events/<int:pk>/unsubscribe', EventUnsubscribeView.as_view()),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

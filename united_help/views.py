@@ -3,7 +3,7 @@ from contextlib import suppress
 from datetime import datetime as dt
 
 from rest_framework import permissions, viewsets, status
-from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404
+from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
@@ -69,6 +69,20 @@ class EventsView(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Event.objects.all()
         return self.event_filters(queryset)
+
+
+class EventsSubscribedView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsVolunteer]
+    serializer_class = EventSubscribeSerializer
+    queryset = Event.objects.all()
+
+    def get_queryset(self):
+        profiles = Profile.objects.filter(active=True, user=self.request.user)
+        user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
+        if user_volunteer_profile.exists():
+            events = self.queryset.filter(volunteers__in=user_volunteer_profile)
+            return events
+        return self.queryset.filter(id=-1)
 
 
 class EventSubscribeView(APIView):
@@ -165,6 +179,7 @@ class ChangeScoresView(GenericAPIView):
         profile.rating = profile.scores / profile.users_voted
         return profile
 
+
 # TODO добавить юзерам подписку на евент
 
 
@@ -172,7 +187,7 @@ class CityView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
     serializer_class = CitySerializer
     queryset = City.objects.all()
-    
+
 
 class CommentView(viewsets.ModelViewSet):
     def perform_create(self, serializer):
@@ -181,7 +196,7 @@ class CommentView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = CommentSerializer
     queryset = Comment.objects.all()
-    
+
 
 class SkillView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]

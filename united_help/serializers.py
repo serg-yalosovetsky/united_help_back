@@ -6,7 +6,6 @@ from django.core import exceptions as django_exceptions
 
 
 class EventSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Event
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
@@ -18,11 +17,16 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class EventSubscribeSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Event
-        read_only_fields = ('id', 'enabled', 'name', 'volunteers', 'description', 'required_members',)
-        fields = ('id', 'enabled', 'name', 'description', 'volunteers', 'required_members',)
+        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                            'start_time', 'end_time', 'image', 'city', 'location',
+                            'employment', 'owner', 'volunteers', 'skills',
+                            'required_members',)
+        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                  'start_time', 'end_time', 'image', 'city', 'location',
+                  'employment', 'owner', 'volunteers', 'skills',
+                  'required_members',)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -57,7 +61,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CitySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = City
         fields = ('id', 'city', 'alias',
@@ -120,7 +123,6 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ActivateProfileSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Profile
         fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
@@ -142,10 +144,8 @@ class ChangeScoresSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Comment
         fields = ('id', 'event', 'user', 'parent', 'text'
                   )
         read_only_fields = ('id', 'user')
-
