@@ -135,6 +135,25 @@ class UserView(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
 
+class MeUserView(DetailAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+    queryset = Users.objects.all()
+
+    def get_queryset(self):
+        return self.queryset.filter(id=self.reques.id).first()
+
+
+class MeProfilesView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProfileSerializer
+    queryset = Profile.objects.all()
+
+    def get_queryset(self):
+        profiles = self.queryset.filter(active=True, user=self.request.user)
+        return profiles
+
+
 class ProfileView(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options', 'trace']
     permission_classes = [permissions.IsAuthenticated, IsAdminOrOwnerOrCreateOnly]

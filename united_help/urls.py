@@ -75,6 +75,8 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('events/<int:pk>/subscribe', EventSubscribeView.as_view()),
     path('events/subscribed', EventsSubscribedView.as_view()),
+    path('users/me', MeUserView.as_view()),
+    path('profiles/me', MeProfilesView.as_view()),
     path('events/<int:pk>/unsubscribe', EventUnsubscribeView.as_view()),
     # Optional UI:
     path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
