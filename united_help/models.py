@@ -115,6 +115,8 @@ class EventLog(models.Model):
     volunteers_subscribed = models.ManyToManyField('Profile', related_name='profiles_subscribed', blank=True)
     volunteers_attended = models.ManyToManyField('Profile', related_name='profiles_attended', blank=True)
     happened = models.BooleanField(default=True)
+log_date = models.DateTimeField(auto_now_add=True)
+
 
     def __repr__(self):
         return f'EventLog_{self.id} {self.event}'

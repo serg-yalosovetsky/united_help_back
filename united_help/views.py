@@ -129,6 +129,71 @@ class EventUnsubscribeView(EventSubscribeView):
         return Response(message, status=status_code)
 
 
+class FinishEventView(EventSubscribeView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+
+    def post(self, request, *args, **kwargs):
+        event_id = kwargs.pop('pk')
+        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        owner_profile = profiles.filter(role=Profile.Roles.organizer)
+        if owner_profile.exists() and event.owner == owner_profile.first():
+            volunteers_attended = []
+            EventLog.objects.create(event=event, 
+                                    volunteers_attended=volunteers_attended, 
+                                    volunteers_subscribed=event.volunteers, 
+                                    happened=True)
+            if event.employment == Event.Employments.one_time:
+                event.enabled = False
+                event.save()
+            
+        else:
+            message = f'You are not a organizer owner'
+            status_code = 403
+        return Response(message, status=status_code)
+
+
+class CancelEventView(EventSubscribeView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+
+    def post(self, request, *args, **kwargs):
+        event_id = kwargs.pop('pk')
+        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        owner_profile = profiles.filter(role=Profile.Roles.organizer)
+        if owner_profile.exists() and event.owner == owner_profile.first():
+            volunteers_attended = []
+            EventLog.objects.create(event=event, 
+                                    volunteers_attended=volunteers_attended, 
+                                    volunteers_subscribed=event.volunteers, 
+                                    happened=False)
+            event.enabled = False
+            event.save()
+            
+        else:
+            message = f'You are not a organizer owner'
+            status_code = 403
+        return Response(message, status=status_code)
+
+
+class EnableEventView(EventSubscribeView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+
+    def post(self, request, *args, **kwargs):
+        event_id = kwargs.pop('pk')
+        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        owner_profile = profiles.filter(role=Profile.Roles.organizer)
+        if owner_profile.exists() and event.owner == owner_profile.first():
+            event.enabled = True
+            event.save()
+            
+        else:
+            message = f'You are not a organizer owner'
+            status_code = 403
+        return Response(message, status=status_code)
+
+
 class UserView(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrCreateOnly]
     serializer_class = UserSerializer
