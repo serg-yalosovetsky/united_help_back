@@ -3,14 +3,14 @@ from contextlib import suppress
 from datetime import datetime as dt
 
 from rest_framework import permissions, viewsets, status
-from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404, ListAPIView
+from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404, ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
 
 from united_help.helpers import str_to_bool, index_in_list, DATETIME_FORMAT
 from united_help.permissions import IsOrganizerOrReadOnly, IsOwnerOrCreateOnly, IsAdminOrReadOnly, \
-    IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly
+    IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer
 from united_help.serializers import *
 from united_help.models import *
 
@@ -85,6 +85,20 @@ class EventsSubscribedView(ListAPIView):
         return self.queryset.filter(id=-1)
 
 
+class EventsCreatedView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    serializer_class = EventSubscribeSerializer
+    queryset = Event.objects.all()
+
+    def get_queryset(self):
+        profiles = Profile.objects.filter(active=True, user=self.request.user)
+        owner_profile = profiles.filter(role=Profile.Roles.organizer)
+        if owner_profile.exists():
+            events = self.queryset.filter(owner=owner_profile.first())
+            return events
+        return self.queryset.filter(id=-1)
+
+
 class EventSubscribeView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
     serializer_class = EventSubscribeSerializer
@@ -131,6 +145,7 @@ class EventUnsubscribeView(EventSubscribeView):
 
 class FinishEventView(EventSubscribeView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    serializer_class = FinishEventSerializer
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
@@ -176,7 +191,7 @@ class CancelEventView(EventSubscribeView):
         return Response(message, status=status_code)
 
 
-class EnableEventView(EventSubscribeView):
+class ActivateEventView(EventSubscribeView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
 
     def post(self, request, *args, **kwargs):
@@ -200,13 +215,18 @@ class UserView(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
 
-class MeUserView(DetailAPIView):
+class MeUserView(GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = UserSerializer
-    queryset = Users.objects.all()
+    serializer_class = UserGetSerializer
+    queryset = User.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset)
+        return Response(serializer.data)
 
     def get_queryset(self):
-        return self.queryset.filter(id=self.reques.id).first()
+        return self.queryset.filter(id=self.request.user.id).first()
 
 
 class MeProfilesView(ListAPIView):

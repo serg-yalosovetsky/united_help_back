@@ -35,6 +35,8 @@ class Profile(models.Model):
     image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
     skills = models.ManyToManyField('Skill', related_name='user_skills', blank=True)
     description = models.TextField(null=True, blank=True,)
+    url = models.TextField(null=True, blank=True,)
+    organization = models.TextField(null=True, blank=True,)
 
 
     def __repr__(self):
@@ -115,8 +117,7 @@ class EventLog(models.Model):
     volunteers_subscribed = models.ManyToManyField('Profile', related_name='profiles_subscribed', blank=True)
     volunteers_attended = models.ManyToManyField('Profile', related_name='profiles_attended', blank=True)
     happened = models.BooleanField(default=True)
-log_date = models.DateTimeField(auto_now_add=True)
-
+    log_date = models.DateTimeField(auto_now_add=True)
 
     def __repr__(self):
         return f'EventLog_{self.id} {self.event}'

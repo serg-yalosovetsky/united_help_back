@@ -5,6 +5,38 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 
 
+class ProfileSerializer(serializers.ModelSerializer):
+
+    def validate_role(self, value):
+        """
+        Check only admin can create admins.
+        """
+        if request := self.context.get('request'):
+            user = User.objects.get(id=request.user.id)
+            if user.profile_set.filter(role=value).exists():
+                raise serializers.ValidationError(f"You already have role {Profile.Roles.choices[value][1]}")
+            if value == Profile.Roles.admin:
+                if not user.profile_set.filter(role=Profile.Roles.admin).exists():
+                    raise serializers.ValidationError("You does not have permission to create admin or organizers")
+
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'rating', 'active',
+                  'image', 'skills', 'description', 'url', 'organization',
+                  )
+        read_only_fields = ('id', 'user', 'rating', 'active',)
+
+
+class ActivateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
+                  )
+        read_only_fields = ('id', 'user', 'role', 'rating', 'scores',)
+
+
+
+
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
@@ -28,6 +60,37 @@ class EventSubscribeSerializer(serializers.ModelSerializer):
                   'employment', 'owner', 'volunteers', 'skills',
                   'required_members',)
 
+
+class FinishEventSerializer(serializers.ModelSerializer):
+    volunteers_attended = serializers.ListSerializer(child=serializers.IntegerField(), write_only=True)
+
+    def update(self, instance, validated_data):
+        updated_fields = []
+        many_to_many_fields = ['volunteers_attended', ]
+        for field in validated_data.keys():
+            value = validated_data[field]
+            if field in many_to_many_fields:
+                if value == -1:
+                    getattr(instance, field).set(*instance.volunteers_subscribed.all())
+                else:
+                    volunteers = Profile.objects.filter(pk__in=value)
+                    getattr(instance, field).set(volunteers)
+            else:
+                setattr(instance, field, value)
+                updated_fields.append(field)
+
+        instance.save(update_fields=updated_fields)
+        return instance
+    class Meta:
+        model = Event
+        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                            'start_time', 'end_time', 'image', 'city', 'location',
+                            'employment', 'owner', 'volunteers', 'skills',
+                            'required_members',)
+        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                  'start_time', 'end_time', 'image', 'city', 'location',
+                  'employment', 'owner', 'volunteers', 'skills',
+                  'required_members', 'volunteers_attended')
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -58,6 +121,17 @@ class UserSerializer(serializers.ModelSerializer):
                   )
         read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
         write_only_fields = ('password',)
+
+
+class UserGetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'active', 'username', 'phone',
+                  'nickname', 'telegram_phone', 'viber_phone',
+                  'email', 'reg_date',
+                  'last_login',
+                  )
+        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -99,35 +173,6 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skill
         fields = ('id', 'name', 'parents',)
         read_only_fields = ('id',)
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-
-    def validate_role(self, value):
-        """
-        Check only admin can create admins.
-        """
-        if request := self.context.get('request'):
-            user = User.objects.get(id=request.user.id)
-            if user.profile_set.filter(role=value).exists():
-                raise serializers.ValidationError(f"You already have role {Profile.Roles.choices[value][1]}")
-            if value == Profile.Roles.admin:
-                if not user.profile_set.filter(role=Profile.Roles.admin).exists():
-                    raise serializers.ValidationError("You does not have permission to create admin or organizers")
-
-    class Meta:
-        model = Profile
-        fields = ('id', 'user', 'role', 'rating', 'active',
-                  )
-        read_only_fields = ('id', 'user', 'rating', 'active',)
-
-
-class ActivateProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
-                  )
-        read_only_fields = ('id', 'user', 'role', 'rating', 'scores',)
 
 
 class ChangeScoresSerializer(serializers.ModelSerializer):
