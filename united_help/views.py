@@ -80,7 +80,7 @@ class EventsSubscribedView(ListAPIView):
         profiles = Profile.objects.filter(active=True, user=self.request.user)
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
-            events = self.queryset.filter(volunteers__in=user_volunteer_profile)
+            events = self.queryset.filter(participants__in=user_volunteer_profile)
             return events
         return self.queryset.filter(id=-1)
 
@@ -107,11 +107,11 @@ class EventSubscribeView(APIView):
     def post(self, request, *args, **kwargs):
         event_id = int(kwargs.pop('pk'))
         event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
-        if event.volunteers.all().count() < event.required_members:
+        if event.participants.all().count() < event.required_members:
             profiles = Profile.objects.filter(active=True, user=request.user)
             user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
             if user_volunteer_profile.exists():
-                event.volunteers.add(user_volunteer_profile.first())
+                event.participants.add(user_volunteer_profile.first())
                 message = f'You subscribed to event {event}'
                 status_code = 200
             else:
@@ -130,8 +130,8 @@ class EventUnsubscribeView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
-            if event.volunteers.filter(id=user_volunteer_profile.first().id).exists():
-                event.volunteers.remove(user_volunteer_profile.first())
+            if event.participants.filter(id=user_volunteer_profile.first().id).exists():
+                event.participants.remove(user_volunteer_profile.first())
                 message = f'You unsubscribed to event {event}'
                 status_code = 204
             else:
@@ -154,9 +154,9 @@ class FinishEventView(EventSubscribeView):
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
             volunteers_attended = []
-            EventLog.objects.create(event=event, 
-                                    volunteers_attended=volunteers_attended, 
-                                    volunteers_subscribed=event.volunteers, 
+            EventLog.objects.create(event=event,
+                                    volunteers_attended=volunteers_attended,
+                                    volunteers_subscribed=event.participants,
                                     happened=True)
             if event.employment == Event.Employments.one_time:
                 event.enabled = False
@@ -178,9 +178,9 @@ class CancelEventView(EventSubscribeView):
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
             volunteers_attended = []
-            EventLog.objects.create(event=event, 
-                                    volunteers_attended=volunteers_attended, 
-                                    volunteers_subscribed=event.volunteers, 
+            EventLog.objects.create(event=event,
+                                    volunteers_attended=volunteers_attended,
+                                    volunteers_subscribed=event.participants,
                                     happened=False)
             event.enabled = False
             event.save()

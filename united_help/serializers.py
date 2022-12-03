@@ -42,7 +42,7 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
-                  'employment', 'owner', 'volunteers', 'skills',
+                  'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members',
                   )
         read_only_fields = ('id',)
@@ -53,12 +53,12 @@ class EventSubscribeSerializer(serializers.ModelSerializer):
         model = Event
         read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
-                            'employment', 'owner', 'volunteers', 'skills',
-                            'required_members',)
+                            'employment', 'owner', 'participants', 'skills',
+                            'required_members', 'to',)
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
-                  'employment', 'owner', 'volunteers', 'skills',
-                  'required_members',)
+                  'employment', 'owner', 'participants', 'skills',
+                  'required_members', 'to',)
 
 
 class FinishEventSerializer(serializers.ModelSerializer):
@@ -85,11 +85,11 @@ class FinishEventSerializer(serializers.ModelSerializer):
         model = Event
         read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
-                            'employment', 'owner', 'volunteers', 'skills',
+                            'employment', 'owner', 'participants', 'skills', 'to',
                             'required_members',)
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
-                  'employment', 'owner', 'volunteers', 'skills',
+                  'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members', 'volunteers_attended')
 
 class UserSerializer(serializers.ModelSerializer):

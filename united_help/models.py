@@ -89,6 +89,10 @@ class Event(models.Model):
         part = 1
         one_time = 2
 
+    class Roles(models.IntegerChoices):
+        volunteer = 1
+        refugee = 3
+
     enabled = models.BooleanField(default=True)
     name = models.CharField(max_length=255)
     description = models.TextField()
@@ -100,7 +104,8 @@ class Event(models.Model):
     location = models.CharField(max_length=255)
     employment = models.IntegerField(choices=Employments.choices)
     owner = models.ForeignKey('Profile', verbose_name='Owner', on_delete=models.CASCADE)
-    volunteers = models.ManyToManyField('Profile', related_name='user_profiles', blank=True)
+    to = models.IntegerField(choices=Roles.choices, default=Roles.volunteer)
+    participants = models.ManyToManyField('Profile', related_name='user_profiles', blank=True)
     skills = models.ManyToManyField('Skill', related_name='required_skills', blank=True)
     required_members = models.IntegerField()
     # TODO user can subscribe to organizer profile
