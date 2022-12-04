@@ -239,6 +239,23 @@ class MeProfilesView(ListAPIView):
         return profiles
 
 
+class MeUserProfileView(RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    queryset = Profile.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        profile_type = kwargs.get('pk')
+        user = self.request.user
+        profile = Profile.objects.filter(user=user, role=profile_type).first()
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
+    def get_queryset(self):
+        profiles = self.queryset.filter(active=True, user=self.request.user)
+        return profiles
+
+
 class ProfileView(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete', 'head', 'options', 'trace']
     permission_classes = [permissions.IsAuthenticated, IsAdminOrOwnerOrCreateOnly]

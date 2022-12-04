@@ -9,7 +9,8 @@ from united_help import views, settings
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
-    MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView
+    MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
+    MeUserProfileView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -46,6 +47,7 @@ urlpatterns = [
     path('events/created', EventsCreatedView.as_view()),
     path('users/me', MeUserView.as_view()),
     path('profiles/me', MeProfilesView.as_view()),
+    path('userprofile/<int:pk>', MeUserProfileView.as_view()),
     path('events/<int:pk>/unsubscribe', EventUnsubscribeView.as_view()),
 
     path('api/schema/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

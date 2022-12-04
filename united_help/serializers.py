@@ -27,14 +27,65 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'user', 'rating', 'active',)
 
 
+class UserSerializer(serializers.ModelSerializer):
+
+    def validate(self, attrs):
+        user = User(**attrs)
+        password = attrs.get("password")
+
+        try:
+            validate_password(password, user)
+        except django_exceptions.ValidationError as e:
+            serializer_error = serializers.as_serializer_error(e)
+            raise serializers.ValidationError(
+                {"password": serializer_error["non_field_errors"]}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        user = super().create(validated_data)
+
+        return user
+
+    class Meta:
+        model = User
+        fields = ('id', 'active', 'username', 'phone',
+                  'nickname', 'telegram_phone', 'viber_phone',
+                  'email', 'password', 'reg_date',
+                  'last_login',
+                  )
+        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
+        write_only_fields = ('password',)
+
+
+class UserGetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'active', 'username', 'phone',
+                  'nickname', 'telegram_phone', 'viber_phone',
+                  'email', 'reg_date',
+                  'last_login',
+                  )
+        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = UserGetSerializer()
+
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'rating', 'active',
+                  'image', 'skills', 'description', 'url', 'organization',
+                  )
+        read_only_fields = ('id', 'user', 'rating', 'active',)
+
+
 class ActivateProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ('id', 'user', 'role', 'scores', 'rating', 'active',
                   )
         read_only_fields = ('id', 'user', 'role', 'rating', 'scores',)
-
-
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -92,46 +143,6 @@ class FinishEventSerializer(serializers.ModelSerializer):
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members', 'volunteers_attended')
 
-class UserSerializer(serializers.ModelSerializer):
-
-    def validate(self, attrs):
-        user = User(**attrs)
-        password = attrs.get("password")
-
-        try:
-            validate_password(password, user)
-        except django_exceptions.ValidationError as e:
-            serializer_error = serializers.as_serializer_error(e)
-            raise serializers.ValidationError(
-                {"password": serializer_error["non_field_errors"]}
-            )
-        return attrs
-
-    def create(self, validated_data):
-        user = super().create(validated_data)
-
-        return user
-
-    class Meta:
-        model = User
-        fields = ('id', 'active', 'username', 'phone',
-                  'nickname', 'telegram_phone', 'viber_phone',
-                  'email', 'password', 'reg_date',
-                  'last_login',
-                  )
-        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
-        write_only_fields = ('password',)
-
-
-class UserGetSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'active', 'username', 'phone',
-                  'nickname', 'telegram_phone', 'viber_phone',
-                  'email', 'reg_date',
-                  'last_login',
-                  )
-        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
 
 
 class CitySerializer(serializers.ModelSerializer):
