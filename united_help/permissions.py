@@ -22,7 +22,7 @@ class IsOwnerOrCreateOnly(permissions.BasePermission):
         if hasattr(obj, 'owner'):
             return obj.owner.id == request.user.id
         if hasattr(obj, 'user'):
-            return obj.user.id == request.user.id
+            return obj.user == request.user.id
         return True
 
 

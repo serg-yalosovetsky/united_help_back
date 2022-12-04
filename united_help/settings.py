@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ['*']
 
 sentry_sdk.init(
     dsn="http://cec5b6ae035646498a13bdf7da2fa031@sentry.fyuzd.live/7",
+    # dsn='https://10fab86cef4b41d88f73c6990730772f@o4504272346480640.ingest.sentry.io/4504272381476864',
     integrations=[DjangoIntegration()],
 
     # Set traces_sample_rate to 1.0 to capture 100%
@@ -41,7 +42,10 @@ sentry_sdk.init(
 
     # If you wish to associate users to errors (assuming you are using
     # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True
+    send_default_pii=True,
+    _experiments={
+        "profiles_sample_rate": 1.0,
+      },
 )
 # Application definition
 

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from united_help.models import Event, User, City, Skill, Profile, Comment
+from united_help.models import Event, User, City, Skill, Profile, Comment, EventLog
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 
@@ -13,7 +13,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         """
         if request := self.context.get('request'):
             user = User.objects.get(id=request.user.id)
-            if user.profile_set.filter(role=value).exists():
+
+            if self.context.get('request').method.lower() == 'post' and user.profile_set.filter(role=value).exists():
                 raise serializers.ValidationError(f"You already have role {Profile.Roles.choices[value][1]}")
             if value == Profile.Roles.admin:
                 if not user.profile_set.filter(role=Profile.Roles.admin).exists():
@@ -115,23 +116,61 @@ class EventSubscribeSerializer(serializers.ModelSerializer):
 class FinishEventSerializer(serializers.ModelSerializer):
     volunteers_attended = serializers.ListSerializer(child=serializers.IntegerField(), write_only=True)
 
-    def update(self, instance, validated_data):
+    def update(self, validated_data, instance):
         updated_fields = []
         many_to_many_fields = ['volunteers_attended', ]
+        # instance = EventLog._default_manager.create(**validated_data)
+        print(0)
         for field in validated_data.keys():
+            print(1)
             value = validated_data[field]
+            print(2)
             if field in many_to_many_fields:
+                print(3)
                 if value == -1:
+                    print(4)
                     getattr(instance, field).set(*instance.volunteers_subscribed.all())
                 else:
+                    print(5)
                     volunteers = Profile.objects.filter(pk__in=value)
                     getattr(instance, field).set(volunteers)
             else:
+                print(6)
                 setattr(instance, field, value)
                 updated_fields.append(field)
 
+        print(7)
         instance.save(update_fields=updated_fields)
         return instance
+
+    def create(self, validated_data):
+        updated_fields = []
+        many_to_many_fields = ['volunteers_attended', ]
+        print(0)
+        instance = EventLog._default_manager.create(**validated_data)
+        print(0)
+        for field in validated_data.keys():
+            print(1)
+            value = validated_data[field]
+            print(2)
+            if field in many_to_many_fields:
+                print(3)
+                if value == -1:
+                    print(4)
+                    getattr(instance, field).set(*instance.volunteers_subscribed.all())
+                else:
+                    print(5)
+                    volunteers = Profile.objects.filter(pk__in=value)
+                    getattr(instance, field).set(volunteers)
+            else:
+                print(6)
+                setattr(instance, field, value)
+                updated_fields.append(field)
+
+        print(7)
+        instance.save(update_fields=updated_fields)
+        return instance
+
     class Meta:
         model = Event
         read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
@@ -142,7 +181,6 @@ class FinishEventSerializer(serializers.ModelSerializer):
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members', 'volunteers_attended')
-
 
 
 class CitySerializer(serializers.ModelSerializer):

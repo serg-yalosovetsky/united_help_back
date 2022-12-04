@@ -85,6 +85,22 @@ class EventsSubscribedView(ListAPIView):
         return self.queryset.filter(id=-1)
 
 
+class EventsAttendedView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsVolunteer]
+    serializer_class = EventSubscribeSerializer
+    queryset = EventLog.objects.all()
+
+    def get_queryset(self):
+        profiles = Profile.objects.filter(active=True, user=self.request.user)
+        user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
+        if user_volunteer_profile.exists():
+            event_ids = self.queryset.filter(volunteers_attended__in=user_volunteer_profile)
+            print(event_ids)
+            # events = Event.objects.filter(pk__in=event_ids)
+            return event_ids
+        return self.queryset.filter(id=-1)
+
+
 class EventsCreatedView(ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
     serializer_class = EventSubscribeSerializer
@@ -153,15 +169,22 @@ class FinishEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            volunteers_attended = []
-            EventLog.objects.create(event=event,
-                                    volunteers_attended=volunteers_attended,
-                                    volunteers_subscribed=event.participants,
-                                    happened=True)
+            serializer: serializers.Serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            validated_data = serializer.validated_data
+            volunteers_attended = validated_data['volunteers_attended']
+            eventlog = EventLog(event=event,
+                                # volunteers_attended=volunteers_attended,
+                                # volunteers_subscribed=event.participants,
+                                happened=True)
+            eventlog.save()
+            eventlog.volunteers_attended.add(*volunteers_attended)
+            eventlog.volunteers_subscribed.add(*event.participants.all())
             if event.employment == Event.Employments.one_time:
                 event.enabled = False
                 event.save()
-            
+            message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
+            status_code = 200
         else:
             message = f'You are not a organizer owner'
             status_code = 403
@@ -257,7 +280,7 @@ class MeUserProfileView(RetrieveAPIView):
 
 
 class ProfileView(viewsets.ModelViewSet):
-    http_method_names = ['get', 'post', 'delete', 'head', 'options', 'trace']
+    http_method_names = ['get', 'post', 'patch', 'put', 'delete', 'head', 'options', 'trace']
     permission_classes = [permissions.IsAuthenticated, IsAdminOrOwnerOrCreateOnly]
     serializer_class = ProfileSerializer
     queryset = Profile.objects.all()
@@ -274,6 +297,9 @@ class ProfileView(viewsets.ModelViewSet):
         Profile.objects.create(role=validated_data.get('role'), user=request.user)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def update(self, request, *args, **kwargs):
+        super(ProfileView, self).update()
 
 
 class ActivateProfileView(UpdateAPIView):
@@ -299,9 +325,6 @@ class ChangeScoresView(GenericAPIView):
             # TODO в ней должно быть записи какой юзер за какой профиль проголосовал, и значение
         profile.rating = profile.scores / profile.users_voted
         return profile
-
-
-# TODO добавить юзерам подписку на евент
 
 
 class CityView(viewsets.ModelViewSet):
