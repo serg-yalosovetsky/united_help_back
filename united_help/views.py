@@ -94,10 +94,17 @@ class EventsAttendedView(ListAPIView):
         profiles = Profile.objects.filter(active=True, user=self.request.user)
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
-            event_ids = self.queryset.filter(volunteers_attended__in=user_volunteer_profile)
-            print(event_ids)
-            # events = Event.objects.filter(pk__in=event_ids)
-            return event_ids
+            event_logs = self.queryset.filter(volunteers_attended__in=user_volunteer_profile, happened=True)
+            print(f'{event_logs=}')
+            for log in event_logs:
+                print(f'{log.happened=}')
+            event_ids = list(set(event_logs.values_list('event_id')))
+            print(f'{event_ids=}')
+            event_ids = [i[0] for i in event_ids]
+            print(f'{event_ids=}')
+            events = Event.objects.filter(pk__in=event_ids)
+            print(f'{events=}')
+            return events
         return self.queryset.filter(id=-1)
 
 
@@ -169,22 +176,24 @@ class FinishEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            serializer: serializers.Serializer = self.serializer_class(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            validated_data = serializer.validated_data
-            volunteers_attended = validated_data['volunteers_attended']
-            eventlog = EventLog(event=event,
-                                # volunteers_attended=volunteers_attended,
-                                # volunteers_subscribed=event.participants,
-                                happened=True)
-            eventlog.save()
-            eventlog.volunteers_attended.add(*volunteers_attended)
-            eventlog.volunteers_subscribed.add(*event.participants.all())
-            if event.employment == Event.Employments.one_time:
-                event.enabled = False
-                event.save()
-            message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
-            status_code = 200
+            if not event.enabled:
+                message = f'You are already finished {event}'
+                status_code = 404
+            else:
+                serializer: serializers.Serializer = self.serializer_class(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                validated_data = serializer.validated_data
+                volunteers_attended = validated_data['volunteers_attended']
+                eventlog = EventLog(event=event,
+                                    happened=True)
+                eventlog.save()
+                eventlog.volunteers_attended.add(*volunteers_attended)
+                eventlog.volunteers_subscribed.add(*event.participants.all())
+                if event.employment == Event.Employments.one_time:
+                    event.enabled = False
+                    event.save()
+                message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
+                status_code = 200
         else:
             message = f'You are not a organizer owner'
             status_code = 403
@@ -200,13 +209,21 @@ class CancelEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            volunteers_attended = []
-            EventLog.objects.create(event=event,
-                                    volunteers_attended=volunteers_attended,
-                                    volunteers_subscribed=event.participants,
-                                    happened=False)
-            event.enabled = False
-            event.save()
+            if not event.enabled:
+                message = f'You are already canceled {event}'
+                status_code = 404
+
+            else:
+                volunteers_attended = []
+                eventlog = EventLog(event=event,
+                                    happened=True)
+                eventlog.save()
+                eventlog.volunteers_attended.add(*volunteers_attended)
+                eventlog.volunteers_subscribed.add(*event.participants.all())
+                event.enabled = False
+                event.save()
+                message = f'You are canceled {event} with {eventlog} in {eventlog.log_date}'
+                status_code = 200
             
         else:
             message = f'You are not a organizer owner'
@@ -223,9 +240,14 @@ class ActivateEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            event.enabled = True
-            event.save()
-            
+            if event.enabled:
+                message = f'You are already activated {event}'
+                status_code = 404
+            else:
+                event.enabled = True
+                event.save()
+                message = f'You are activated {event}'
+                status_code = 200
         else:
             message = f'You are not a organizer owner'
             status_code = 403

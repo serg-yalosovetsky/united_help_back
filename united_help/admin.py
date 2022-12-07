@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Profile, Event, Skill, City, Comment
+from .models import User, Profile, Event, Skill, City, Comment, EventLog
 
 
 @admin.register(User)
@@ -17,6 +17,13 @@ class EventAdmin(admin.ModelAdmin):
     list_display = ('id', "name", "enabled", 'city', 'owner')
     list_display_links = ('id', "name", "enabled",)
     search_fields = ["name", 'description', 'skills', ]
+
+
+@admin.register(EventLog)
+class EventAdmin(admin.ModelAdmin):
+    list_display = ('id', 'event', "happened",)
+    list_display_links = ('id', 'event', "happened",)
+    search_fields = ["event", ]
 
 
 @admin.register(Skill)
