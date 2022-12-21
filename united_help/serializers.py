@@ -267,7 +267,7 @@ class SkillSerializer(serializers.ModelSerializer):
 
 class ChangeScoresSerializer(serializers.ModelSerializer):
     def validate_scores(self, value):
-        if value > 5 or value < -5:
+        if value > 5 or value < 0.5:
             raise serializers.ValidationError("You rate with invalid scores")
         return value
 
@@ -289,6 +289,7 @@ class CommentSerializer(serializers.ModelSerializer):
 class UserCommentSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     image = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
 
     def get_image(self, obj):
         request = self.context.get('request')
@@ -304,8 +305,13 @@ class UserCommentSerializer(serializers.ModelSerializer):
                 images.append(profiles.filter(role=role).first().image)
         return request.build_absolute_uri(images[0].url) if images else None
 
+    def get_rating(self, obj):
+        profile = obj.event.owner
+        votes = Voting.objects.filter(applicant=profile, voting=obj.user)
+        return votes.first().scores if votes.exists() else None
+
     class Meta:
 
         model = Comment
-        fields = ('id', 'event', 'user', 'parent', 'text', 'image',)
+        fields = ('id', 'event', 'user', 'parent', 'text', 'image', 'rating',)
         read_only_fields = ('id', 'user')
