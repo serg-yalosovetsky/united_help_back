@@ -143,6 +143,18 @@ class EventsFinishedView(ListAPIView):
         return self.queryset.filter(id=-1)
 
 
+class CommentsEventView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, ]
+    serializer_class = CommentSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self,):
+        event_id = self.kwargs.get('pk')
+        print(f'{event_id=}')
+        event = get_object_or_404(Event.objects.all(), pk=event_id)
+        return Comment.objects.filter(event=event)
+
+
 class EventSubscribeView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
     serializer_class = EventSubscribeSerializer
