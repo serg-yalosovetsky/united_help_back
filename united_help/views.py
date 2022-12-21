@@ -155,6 +155,27 @@ class CommentsEventView(ListAPIView):
         return Comment.objects.filter(event=event)
 
 
+class UserCommentsEventView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, ]
+    serializer_class = UserCommentSerializer
+    lookup_field = 'pk'
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={"request": request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    def get_queryset(self,):
+        event_id = self.kwargs.get('pk')
+        print(f'{event_id=}')
+        event = get_object_or_404(Event.objects.all(), pk=event_id)
+        return Comment.objects.filter(event=event)
+
 class EventSubscribeView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
     serializer_class = EventSubscribeSerializer
