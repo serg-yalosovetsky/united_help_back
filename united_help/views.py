@@ -2,6 +2,7 @@ import datetime
 from contextlib import suppress
 from datetime import datetime as dt
 
+from django.http import Http404
 from rest_framework import permissions, viewsets, status
 from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404, ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
@@ -70,6 +71,15 @@ class EventsView(viewsets.ModelViewSet):
         queryset = Event.objects.all()
         return self.event_filters(queryset)
 
+    def perform_create(self, serializer):
+        print(f'{serializer.validated_data=}')
+        profiles = Profile.objects.filter(active=True, user=self.request.user)
+        user_organizer_profile = profiles.filter(role=Profile.Roles.organizer)
+        if user_organizer_profile.exists():
+            serializer.validated_data['owner'] = user_organizer_profile.first()
+            serializer.save()
+        else:
+            raise Http404('you are no organizer')
 
 class EventsSubscribedView(ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
@@ -95,15 +105,9 @@ class EventsAttendedView(ListAPIView):
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
             event_logs = self.queryset.filter(volunteers_attended__in=user_volunteer_profile, happened=True)
-            print(f'{event_logs=}')
-            for log in event_logs:
-                print(f'{log.happened=}')
             event_ids = list(set(event_logs.values_list('event_id')))
-            print(f'{event_ids=}')
             event_ids = [i[0] for i in event_ids]
-            print(f'{event_ids=}')
             events = Event.objects.filter(pk__in=event_ids)
-            print(f'{events=}')
             return events
         return self.queryset.filter(id=-1)
 
@@ -118,6 +122,23 @@ class EventsCreatedView(ListAPIView):
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists():
             events = self.queryset.filter(owner=owner_profile.first())
+            return events
+        return self.queryset.filter(id=-1)
+
+
+class EventsFinishedView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    serializer_class = EventFinishedSerializer
+    queryset = EventLog.objects.all()
+
+    def get_queryset(self):
+        profiles = Profile.objects.filter(active=True, user=self.request.user)
+        user_organizeer_profile = profiles.filter(role=Profile.Roles.organizer)
+        if user_organizeer_profile.exists():
+            event_logs = self.queryset.filter(event__owner=user_organizeer_profile.first(), happened=True)
+            event_ids = list(set(event_logs.values_list('event_id')))
+            event_ids = [i[0] for i in event_ids]
+            events = Event.objects.filter(pk__in=event_ids)
             return events
         return self.queryset.filter(id=-1)
 

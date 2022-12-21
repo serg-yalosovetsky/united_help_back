@@ -10,7 +10,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
-    MeUserProfileView, EventsAttendedView
+    MeUserProfileView, EventsAttendedView, EventsFinishedView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -41,6 +41,7 @@ urlpatterns = [
     path('events/subscribed/', EventsSubscribedView.as_view()),
     path('events/attended/', EventsAttendedView.as_view()),
     path('events/created/', EventsCreatedView.as_view()),
+    path('events/finished/', EventsFinishedView.as_view()),
     path('events/<int:pk>/subscribe/', EventSubscribeView.as_view()),
     path('events/<int:pk>/cancel/', CancelEventView.as_view()),
     path('events/<int:pk>/activate/', ActivateEventView.as_view()),

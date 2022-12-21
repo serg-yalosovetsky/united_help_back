@@ -1,6 +1,7 @@
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
-from united_help.models import Event, User, City, Skill, Profile, Comment, EventLog
+from united_help.models import Event, User, City, Skill, Profile, Comment, EventLog, Voting
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions as django_exceptions
 
@@ -90,6 +91,7 @@ class ActivateProfileSerializer(serializers.ModelSerializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    image = Base64ImageField()
     class Meta:
         model = Event
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
@@ -97,20 +99,59 @@ class EventSerializer(serializers.ModelSerializer):
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members',
                   )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'owner', 'reg_date')
 
 
 class EventSubscribeSerializer(serializers.ModelSerializer):
+    subscribed_members = serializers.SerializerMethodField()
+
+    def get_subscribed_members(self, obj):
+        return obj.participants.count()
+
     class Meta:
         model = Event
         read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
                             'employment', 'owner', 'participants', 'skills',
-                            'required_members', 'to',)
+                            'subscribed_members', 'required_members', 'to',)
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills',
-                  'required_members', 'to',)
+                  'subscribed_members', 'required_members', 'to',)
+
+
+class EventFinishedSerializer(serializers.ModelSerializer):
+    subscribed_members = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+
+    def get_subscribed_members(self, obj):
+        return obj.participants.count()
+
+    def get_comments_count(self, obj):
+        return obj.comment_set.count()
+
+    def get_rating(self, obj):
+        profile = obj.owner
+        votes: list[Voting] = Voting.objects.filter(applicant=profile)
+        votes_sum = 0
+        for vote in votes:
+            votes_sum += vote.scores
+        return votes_sum / votes.count()
+    class Meta:
+        model = Event
+        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                            'start_time', 'end_time', 'image', 'city', 'location',
+                            'employment', 'owner', 'participants', 'skills',
+                            'subscribed_members', 'required_members', 'to',
+                            'comments_count', 'rating',
+                            )
+        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+                  'start_time', 'end_time', 'image', 'city', 'location',
+                  'employment', 'owner', 'participants', 'skills',
+                  'subscribed_members', 'required_members', 'to',
+                  'comments_count', 'rating',
+                  )
 
 
 class FinishEventSerializer(serializers.ModelSerializer):

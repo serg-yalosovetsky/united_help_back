@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Profile, Event, Skill, City, Comment, EventLog
+from .models import User, Profile, Event, Skill, City, Comment, EventLog, Voting
 
 
 @admin.register(User)
@@ -46,4 +46,8 @@ class CommentAdmin(admin.ModelAdmin):
     list_display_links = ('id', "event",)
 
 
+@admin.register(Voting)
+class VotingAdmin(admin.ModelAdmin):
+    list_display = ('id', "voting", 'applicant', "scores",)
+    list_display_links = ('id', "scores",)
 
