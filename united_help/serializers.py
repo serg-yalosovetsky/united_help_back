@@ -1,3 +1,5 @@
+import datetime
+
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
@@ -61,14 +63,28 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserGetSerializer(serializers.ModelSerializer):
+    is_online = serializers.SerializerMethodField()
+
+    def get_is_online(self, obj):
+        datetime_diff = datetime.datetime.now() - obj.last_login.replace(tzinfo=None)
+        is_online = datetime_diff.seconds < 5 * 60
+        return is_online
     class Meta:
         model = User
         fields = ('id', 'active', 'username', 'phone',
                   'nickname', 'telegram_phone', 'viber_phone',
-                  'email', 'reg_date',
-                  'last_login',
+                  'email', 'last_login', 'is_online',
                   )
-        read_only_fields = ('id', 'reg_date', 'last_login', 'active',)
+        read_only_fields = ('id', 'reg_date', 'last_login', 'active', 'is_online',)
+
+
+class ContactGetSerializer(serializers.ModelSerializer):
+    user = UserGetSerializer()
+
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'active', 'image',)
+        read_only_fields = ('id', 'user', 'role', 'active', 'image',)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

@@ -12,7 +12,6 @@ class User(DjangoUser):
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
     reg_date = models.DateTimeField(auto_now_add=True)
 
-
     def __repr__(self):
         return f'User_{self.id} {self.username}'
 

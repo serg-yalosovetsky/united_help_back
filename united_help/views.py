@@ -143,6 +143,46 @@ class EventsFinishedView(ListAPIView):
         return self.queryset.filter(id=-1)
 
 
+class ContactsView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    serializer_class = ContactGetSerializer
+    queryset = Profile.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        user_organizeer_profile = Profile.objects.filter(role=Profile.Roles.organizer)
+
+        volunteers = set()
+        refugees = set()
+        if user_organizeer_profile.exists():
+            events = Event.objects.filter(owner=user_organizeer_profile.first())
+            for event in events:
+                if event.to == Profile.Roles.volunteer:
+                    for participant in event.participants.all():
+                        volunteers.add(participant)
+                if event.to == Profile.Roles.refugee:
+                    for participant in event.participants.all():
+                        refugees.add(participant)
+        else:
+            raise Http404
+
+        contacts = {
+            'volunteers': list(volunteers),
+            'refugees': list(refugees),
+        }
+        data = {}
+
+        for type_, list_ in contacts.items():
+            page = self.paginate_queryset(list_)
+
+            if page is not None:
+                serializer = self.get_serializer(page, many=True, context={"request": request})
+            else:
+                serializer = self.get_serializer(list_, many=True, context={"request": request})
+            data[type_] = serializer.data
+        print(f'{data=}')
+        return Response(data)
+
+
 class CommentsEventView(ListAPIView):
     permission_classes = [permissions.IsAuthenticated, ]
     serializer_class = CommentSerializer
