@@ -69,6 +69,7 @@ class UserGetSerializer(serializers.ModelSerializer):
         datetime_diff = datetime.datetime.now() - obj.last_login.replace(tzinfo=None)
         is_online = datetime_diff.seconds < 5 * 60
         return is_online
+
     class Meta:
         model = User
         fields = ('id', 'active', 'username', 'phone',
