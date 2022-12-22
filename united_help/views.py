@@ -149,6 +149,18 @@ class ContactsView(ListAPIView):
     queryset = Profile.objects.all()
 
     def get(self, request, *args, **kwargs):
+        volunteers_only = self.request.query_params.get('volunteers')
+        refugees_only = self.request.query_params.get('refugees')
+
+        if volunteers_only is not None and refugees_only is not None:
+            types = [Profile.Roles.volunteer, Profile.Roles.refugee]
+        elif volunteers_only is not None:
+            types = [Profile.Roles.volunteer]
+        elif refugees_only is not None:
+            types = [Profile.Roles.refugee]
+        else:
+            types = [Profile.Roles.volunteer, Profile.Roles.refugee]
+
         user_organizeer_profile = Profile.objects.filter(role=Profile.Roles.organizer)
 
         volunteers = set()
@@ -156,19 +168,21 @@ class ContactsView(ListAPIView):
         if user_organizeer_profile.exists():
             events = Event.objects.filter(owner=user_organizeer_profile.first())
             for event in events:
-                if event.to == Profile.Roles.volunteer:
+                if event.to == Profile.Roles.volunteer and Profile.Roles.volunteer in types:
                     for participant in event.participants.all():
                         volunteers.add(participant)
-                if event.to == Profile.Roles.refugee:
+                if event.to == Profile.Roles.refugee and Profile.Roles.refugee in types:
                     for participant in event.participants.all():
                         refugees.add(participant)
         else:
             raise Http404
 
-        contacts = {
-            'volunteers': list(volunteers),
-            'refugees': list(refugees),
-        }
+        contacts = {}
+        if Profile.Roles.refugee in types:
+            contacts['refugees'] = list(refugees)
+        if Profile.Roles.volunteer in types:
+            contacts['volunteers'] = list(volunteers)
+
         data = {}
 
         for type_, list_ in contacts.items():
@@ -179,7 +193,6 @@ class ContactsView(ListAPIView):
             else:
                 serializer = self.get_serializer(list_, many=True, context={"request": request})
             data[type_] = serializer.data
-        print(f'{data=}')
         return Response(data)
 
 
