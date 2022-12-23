@@ -154,7 +154,11 @@ class EventFinishedSerializer(serializers.ModelSerializer):
         votes_sum = 0
         for vote in votes:
             votes_sum += vote.scores
-        return votes_sum / votes.count()
+        if votes.count() == 0:
+            return 0
+        else:
+            return votes_sum / votes.count()
+
     class Meta:
         model = Event
         read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
