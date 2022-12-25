@@ -11,9 +11,10 @@ class User(DjangoUser):
     telegram_phone = PhoneNumberField(null=True, blank=True, unique=False)
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
     reg_date = models.DateTimeField(auto_now_add=True)
+    firebase_tokens = models.TextField(default='')
 
     def __repr__(self):
-        return f'User_{self.id} {self.username}'
+        return f'User_{self.pk} {self.username}'
 
     def __str__(self):
         return repr(self)
