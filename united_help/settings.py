@@ -28,6 +28,14 @@ SECRET_KEY = 'django-insecure-87mkw^d0!3#ccczhk0p0b@hr&eq)i=&d5##re%#1fbw%89&y6n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+import firebase_admin
+from firebase_admin import credentials
+
+cred = credentials.Certificate('ua-org-united-help-firebase-adminsdk.json')
+firebase_admin.initialize_app(cred)
+
+
 ALLOWED_HOSTS = ['*']
 
 sentry_sdk.init(
