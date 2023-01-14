@@ -14,6 +14,7 @@ from united_help.permissions import IsOrganizerOrReadOnly, IsOwnerOrCreateOnly, 
     IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer
 from united_help.serializers import *
 from united_help.models import *
+from united_help.services import send_firebase_multiple_messages
 
 
 class EventsView(viewsets.ModelViewSet):
@@ -91,6 +92,7 @@ class EventsSubscribedView(ListAPIView):
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
             events = self.queryset.filter(participants__in=user_volunteer_profile)
+
             return events
         return self.queryset.filter(id=-1)
 
@@ -242,6 +244,12 @@ class EventSubscribeView(APIView):
             user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
             if user_volunteer_profile.exists():
                 event.participants.add(user_volunteer_profile.first())
+                send_firebase_multiple_messages(
+                    f'You have new volunteer in {event.name}',
+                    f'Volunteer {user_volunteer_profile.user.username} subscribed to event {event.name}',
+                    [event.owner.user, ],
+                    image=user_volunteer_profile.image,
+                )
                 message = f'You subscribed to event {event}'
                 status_code = 200
             else:
@@ -262,6 +270,12 @@ class EventUnsubscribeView(EventSubscribeView):
         if user_volunteer_profile.exists():
             if event.participants.filter(id=user_volunteer_profile.first().id).exists():
                 event.participants.remove(user_volunteer_profile.first())
+                send_firebase_multiple_messages(
+                    f'You are lost one of volunteers in {event.name}',
+                    f'Volunteer {user_volunteer_profile.user.username} unsubscribed to event {event.name}',
+                    [event.owner.user, ],
+                    image=user_volunteer_profile.image,
+                )
                 message = f'You unsubscribed to event {event}'
                 status_code = 204
             else:
@@ -299,6 +313,12 @@ class FinishEventView(EventSubscribeView):
                 if event.employment == Event.Employments.one_time:
                     event.enabled = False
                     event.save()
+                send_firebase_multiple_messages(
+                    f'Organizer has finished event {event.name}',
+                    f'Organizer {event.owner.user.username} has finished event {event.name}',
+                    [volunteers.user for volunteers in event.participants],
+                    image=event.image,
+                )
                 message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
                 status_code = 200
         else:
@@ -329,6 +349,12 @@ class CancelEventView(EventSubscribeView):
                 eventlog.volunteers_subscribed.add(*event.participants.all())
                 event.enabled = False
                 event.save()
+                send_firebase_multiple_messages(
+                    f'Organizer has canceled event {event.name}',
+                    f'Organizer {event.owner.user.username} has canceled event {event.name}',
+                    [volunteers.user for volunteers in event.participants],
+                    image=event.image,
+                )
                 message = f'You are canceled {event} with {eventlog} in {eventlog.log_date}'
                 status_code = 200
             
@@ -353,6 +379,12 @@ class ActivateEventView(EventSubscribeView):
             else:
                 event.enabled = True
                 event.save()
+                send_firebase_multiple_messages(
+                    f'Organizer has activated event {event.name}',
+                    f'Organizer {event.owner.user.username} has activated event {event.name}',
+                    [volunteers.user for volunteers in event.participants],
+                    image=event.image,
+                )
                 message = f'You are activated {event}'
                 status_code = 200
         else:
