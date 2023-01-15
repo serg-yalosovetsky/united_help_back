@@ -46,7 +46,7 @@ def send_firebase_multiple_messages(title: str, message: str, users: list[User] 
         if user.firebase_tokens:
             tokens = user.firebase_tokens.split()
             devices_tokens += tokens
-            print(f'send message to {user.fullname} {user.email} with token {user.firebase_tokens} ')
+            print(f'send message to {user.username} {user.email} with token {user.firebase_tokens} ')
     if devices_tokens:
         success_count = 0
         all_users_whom_sended = [f"  {u.pk} {u.email}" for u in users]

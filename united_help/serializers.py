@@ -307,6 +307,10 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'user')
 
 
+class UserAddFirebaseTokenSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+
 class UserCommentSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     image = serializers.SerializerMethodField()

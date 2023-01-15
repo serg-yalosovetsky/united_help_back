@@ -210,6 +210,41 @@ class CommentsEventView(ListAPIView):
         return Comment.objects.filter(event=event)
 
 
+
+class UserAddFirebaseTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated, ]
+    serializer_class = UserAddFirebaseTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer: serializers.Serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        token = validated_data['token']
+
+        if token:
+            user = User.objects.get(id=request.user.id)
+            firebase_tokens = user.firebase_tokens
+            if firebase_tokens:
+                firebase_tokens = set(user.firebase_tokens.split())
+            else:
+                firebase_tokens = set()
+            firebase_tokens.add(token)
+            new_tokens = ' '.join(list(firebase_tokens))
+            print(f'{firebase_tokens=}')
+            user.firebase_tokens = new_tokens
+            print(f'{new_tokens=}')
+            user.save()
+
+            print(f'{user.firebase_tokens=}')
+
+            message = f'You added new firebase token'
+            status_code = 200
+        else:
+            message = f'This is invalid firebase token'
+            status_code = 400
+        return Response(message, status=status_code)
+
+
 class UserCommentsEventView(ListAPIView):
     permission_classes = [permissions.IsAuthenticated, ]
     serializer_class = UserCommentSerializer
@@ -246,9 +281,9 @@ class EventSubscribeView(APIView):
                 event.participants.add(user_volunteer_profile.first())
                 send_firebase_multiple_messages(
                     f'You have new volunteer in {event.name}',
-                    f'Volunteer {user_volunteer_profile.user.username} subscribed to event {event.name}',
+                    f'Volunteer {user_volunteer_profile.first().user.username} subscribed to event {event.name}',
                     [event.owner.user, ],
-                    image=user_volunteer_profile.image,
+                    image=user_volunteer_profile.first().image,
                 )
                 message = f'You subscribed to event {event}'
                 status_code = 200
@@ -257,11 +292,13 @@ class EventSubscribeView(APIView):
                 status_code = 403
         else:
             message = f'There are no more job for you on this event {event}'
-            status_code = 404
+            status_code = 400
         return Response(message, status=status_code)
 
 
 class EventUnsubscribeView(EventSubscribeView):
+    permission_classes = [permissions.IsAuthenticated, IsVolunteer]
+
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
         event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
@@ -272,15 +309,15 @@ class EventUnsubscribeView(EventSubscribeView):
                 event.participants.remove(user_volunteer_profile.first())
                 send_firebase_multiple_messages(
                     f'You are lost one of volunteers in {event.name}',
-                    f'Volunteer {user_volunteer_profile.user.username} unsubscribed to event {event.name}',
+                    f'Volunteer {user_volunteer_profile.first().user.username} unsubscribed to event {event.name}',
                     [event.owner.user, ],
-                    image=user_volunteer_profile.image,
+                    image=user_volunteer_profile.first().image,
                 )
                 message = f'You unsubscribed to event {event}'
                 status_code = 204
             else:
                 message = f'You has not subscription to event {event}'
-                status_code = 404
+                status_code = 400
         else:
             message = f'You are not a volunteer'
             status_code = 403
@@ -299,7 +336,7 @@ class FinishEventView(EventSubscribeView):
         if owner_profile.exists() and event.owner == owner_profile.first():
             if not event.enabled:
                 message = f'You are already finished {event}'
-                status_code = 404
+                status_code = 400
             else:
                 serializer: serializers.Serializer = self.serializer_class(data=request.data)
                 serializer.is_valid(raise_exception=True)
@@ -316,7 +353,7 @@ class FinishEventView(EventSubscribeView):
                 send_firebase_multiple_messages(
                     f'Organizer has finished event {event.name}',
                     f'Organizer {event.owner.user.username} has finished event {event.name}',
-                    [volunteers.user for volunteers in event.participants],
+                    [volunteers.user for volunteers in event.participants.all()],
                     image=event.image,
                 )
                 message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
@@ -338,7 +375,7 @@ class CancelEventView(EventSubscribeView):
         if owner_profile.exists() and event.owner == owner_profile.first():
             if not event.enabled:
                 message = f'You are already canceled {event}'
-                status_code = 404
+                status_code = 400
 
             else:
                 volunteers_attended = []
@@ -352,7 +389,7 @@ class CancelEventView(EventSubscribeView):
                 send_firebase_multiple_messages(
                     f'Organizer has canceled event {event.name}',
                     f'Organizer {event.owner.user.username} has canceled event {event.name}',
-                    [volunteers.user for volunteers in event.participants],
+                    [volunteers.user for volunteers in event.participants.all()],
                     image=event.image,
                 )
                 message = f'You are canceled {event} with {eventlog} in {eventlog.log_date}'
@@ -369,20 +406,20 @@ class ActivateEventView(EventSubscribeView):
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
-        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        event = get_object_or_404(Event.objects.all(), pk=event_id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
             if event.enabled:
                 message = f'You are already activated {event}'
-                status_code = 404
+                status_code = 400
             else:
                 event.enabled = True
                 event.save()
                 send_firebase_multiple_messages(
                     f'Organizer has activated event {event.name}',
                     f'Organizer {event.owner.user.username} has activated event {event.name}',
-                    [volunteers.user for volunteers in event.participants],
+                    [volunteers.user for volunteers in event.participants.all()],
                     image=event.image,
                 )
                 message = f'You are activated {event}'
