@@ -153,8 +153,13 @@ class ContactsView(ListAPIView):
     def get(self, request, *args, **kwargs):
         volunteers_only = self.request.query_params.get('volunteers')
         refugees_only = self.request.query_params.get('refugees')
+        event_id: str = self.request.query_params.get('event_id')
 
-        if volunteers_only is not None and refugees_only is not None:
+        if event_id is not None and event_id and event_id.isdigit():
+            event_id: int = int(event_id)
+            event = get_object_or_404(Event, id=event_id)
+            types = [event.to]
+        elif volunteers_only is not None and refugees_only is not None:
             types = [Profile.Roles.volunteer, Profile.Roles.refugee]
         elif volunteers_only is not None:
             types = [Profile.Roles.volunteer]
@@ -168,14 +173,20 @@ class ContactsView(ListAPIView):
         volunteers = set()
         refugees = set()
         if user_organizeer_profile.exists():
-            events = Event.objects.filter(owner=user_organizeer_profile.first())
-            for event in events:
-                if event.to == Profile.Roles.volunteer and Profile.Roles.volunteer in types:
-                    for participant in event.participants.all():
-                        volunteers.add(participant)
-                if event.to == Profile.Roles.refugee and Profile.Roles.refugee in types:
-                    for participant in event.participants.all():
-                        refugees.add(participant)
+            if isinstance(event_id, int):
+                if event.to == Profile.Roles.volunteer:
+                    volunteers = set(list(event.participants.all()))
+                else:
+                    refugees = set(list(event.participants.all()))
+            else:
+                events = Event.objects.filter(owner=user_organizeer_profile.first())
+                for event in events:
+                    if event.to == Profile.Roles.volunteer and Profile.Roles.volunteer in types:
+                        for participant in event.participants.all():
+                            volunteers.add(participant)
+                    if event.to == Profile.Roles.refugee and Profile.Roles.refugee in types:
+                        for participant in event.participants.all():
+                            refugees.add(participant)
         else:
             raise Http404
 
@@ -280,10 +291,14 @@ class EventSubscribeView(APIView):
             if user_volunteer_profile.exists():
                 event.participants.add(user_volunteer_profile.first())
                 send_firebase_multiple_messages(
-                    f'You have new volunteer in {event.name}',
-                    f'Volunteer {user_volunteer_profile.first().user.username} subscribed to event {event.name}',
+                    f'Волонтер {user_volunteer_profile.first().user.username} приєднується до івента {event.name}.',
+                    f'Набрано {event.participants.count()} з {event.required_members} волонтерів для допомоги в організації івента {event.name}.',
                     [event.owner.user, ],
-                    image=user_volunteer_profile.first().image,
+                    notify_type='subscribe',
+                    to_profile=Profile.Roles.organizer.name,
+                    event_id=event_id,
+                    image=request.build_absolute_uri(event.image.url),
+                    # image='https://octodex.github.com/images/codercat.jpg',
                 )
                 message = f'You subscribed to event {event}'
                 status_code = 200

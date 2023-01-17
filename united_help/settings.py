@@ -23,8 +23,7 @@ firebase_admin.initialize_app(cred)
 ALLOWED_HOSTS = ['*']
 
 sentry_sdk.init(
-    dsn="http://cec5b6ae035646498a13bdf7da2fa031@sentry.fyuzd.live/7",
-    # dsn='https://10fab86cef4b41d88f73c6990730772f@o4504272346480640.ingest.sentry.io/4504272381476864',
+    dsn="https://b5f550f2d9874bc1aad2751d164a730d@sentry.fyuzd.live/3",
     integrations=[DjangoIntegration()],
 
     # Set traces_sample_rate to 1.0 to capture 100%
