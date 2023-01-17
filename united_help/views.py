@@ -82,6 +82,47 @@ class EventsView(viewsets.ModelViewSet):
         else:
             raise Http404('you are no organizer')
 
+    def update(self, request, *args, **kwargs):
+        is_same = True  # check if event is changed
+
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+
+        initial_serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        initial_serializer.is_valid(raise_exception=True)
+        data = initial_serializer.data
+        event_id = self.kwargs.get('pk')
+        event = Event.objects.get(id=event_id)
+        instance_serializer = self.get_serializer(event)
+        instance_data = instance_serializer.data
+
+        update_items = {}
+        for k in data:
+            if data[k] != instance_data[k]:
+                is_same = False
+                update_items[k] = data[k]
+
+        if not is_same:
+            send_firebase_multiple_messages(
+                f'Organizer {event.owner.user.username} changed івента {event.name}.',
+                f'Changed field is {[ f"{k} is {v}" for k, v in update_items.items()] }.',
+                [participant.user for participant in event.participants],
+                notify_type='chane event',
+                to_profile=event.to.name,
+                event_id=event_id,
+                image=request.build_absolute_uri(event.image.url),
+            )
+
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+
 class EventsSubscribedView(ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
     serializer_class = EventSubscribeSerializer
@@ -214,12 +255,11 @@ class CommentsEventView(ListAPIView):
     serializer_class = CommentSerializer
     lookup_field = 'pk'
 
-    def get_queryset(self,):
+    def get_queryset(self, ):
         event_id = self.kwargs.get('pk')
         print(f'{event_id=}')
         event = get_object_or_404(Event.objects.all(), pk=event_id)
         return Comment.objects.filter(event=event)
-
 
 
 class UserAddFirebaseTokenView(APIView):
@@ -271,11 +311,12 @@ class UserCommentsEventView(ListAPIView):
         serializer = self.get_serializer(queryset, many=True, context={"request": request})
         return Response(serializer.data)
 
-    def get_queryset(self,):
+    def get_queryset(self, ):
         event_id = self.kwargs.get('pk')
         print(f'{event_id=}')
         event = get_object_or_404(Event.objects.all(), pk=event_id)
         return Comment.objects.filter(event=event)
+
 
 class EventSubscribeView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsVolunteer]
@@ -409,7 +450,7 @@ class CancelEventView(EventSubscribeView):
                 )
                 message = f'You are canceled {event} with {eventlog} in {eventlog.log_date}'
                 status_code = 200
-            
+
         else:
             message = f'You are not a organizer owner'
             status_code = 403
@@ -510,7 +551,7 @@ class ProfileView(viewsets.ModelViewSet):
         Profile.objects.create(role=validated_data.get('role'), user=request.user)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-    
+
     def update(self, request, *args, **kwargs):
         super(ProfileView, self).update()
 
