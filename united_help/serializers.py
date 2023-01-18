@@ -153,7 +153,7 @@ class EventFinishedSerializer(serializers.ModelSerializer):
         votes: list[Voting] = Voting.objects.filter(applicant=profile)
         votes_sum = 0
         for vote in votes:
-            votes_sum += vote.scores
+            votes_sum += vote.score
         if votes.count() == 0:
             return 0
         else:
@@ -177,6 +177,7 @@ class EventFinishedSerializer(serializers.ModelSerializer):
 
 class FinishEventSerializer(serializers.ModelSerializer):
     volunteers_attended = serializers.ListSerializer(child=serializers.IntegerField(), write_only=True)
+    message = serializers.CharField()
 
     def update(self, validated_data, instance):
         updated_fields = []
@@ -245,6 +246,37 @@ class FinishEventSerializer(serializers.ModelSerializer):
                   'required_members', 'volunteers_attended')
 
 
+class VotingSerializer(serializers.ModelSerializer):
+
+    def validate(self, data):
+        voter = self.context['request'].user
+
+        event = Event.objects.filter(id=data['event'])
+        if not event.exists():
+            raise serializers.ValidationError(f'You are not a {event.to.name}!')
+        event: Event = event.first()
+
+        participant = Profile.objects.filter(user=voter, role=event.to)
+        owner = Profile.objects.filter(user=voter, role=Profile.Roles.organizer)
+        is_owner = owner.exists() and owner.first().id == event.owner.id
+        is_participant = participant.exists() and participant.first() in event.participants.all()
+        if not is_participant or is_owner:
+            raise serializers.ValidationError(f'You are not a owner or participant of {event.name}!')
+
+        applicant: Profile = Profile.objects.filter(id=data['applicant']).first()
+        vote = Voting.objects.filter(voter=voter, applicant=applicant, event=event)
+
+        if vote.exists():
+            raise serializers.ValidationError(f'You are already rate {applicant.user.username} in event {event.name}!')
+
+        return data
+
+    class Meta:
+        model = Voting
+        fields = ('id', 'voter', 'applicant', 'event', 'score',)
+        read_only_fields = ('id', 'voter',)
+
+
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
@@ -300,15 +332,20 @@ class ChangeScoresSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    score = serializers.IntegerField(required=False)
+
     class Meta:
         model = Comment
-        fields = ('id', 'event', 'user', 'parent', 'text'
-                  )
-        read_only_fields = ('id', 'user')
+        fields = ('id', 'event', 'user', 'parent', 'text', 'score', )
+        read_only_fields = ('id', 'user', )
 
 
 class UserAddFirebaseTokenSerializer(serializers.Serializer):
     token = serializers.CharField()
+
+
+class CancelEventSerializer(serializers.Serializer):
+    message = serializers.CharField()
 
 
 class UserCommentSerializer(serializers.ModelSerializer):

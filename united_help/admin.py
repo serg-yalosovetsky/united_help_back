@@ -48,6 +48,6 @@ class CommentAdmin(admin.ModelAdmin):
 
 @admin.register(Voting)
 class VotingAdmin(admin.ModelAdmin):
-    list_display = ('id', "voting", 'applicant', "scores",)
-    list_display_links = ('id', "scores",)
+    list_display = ('id', "voter", 'applicant', "score",)
+    list_display_links = ('id', "score",)
 

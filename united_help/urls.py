@@ -10,8 +10,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
-    MeUserProfileView, EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
-    UserAddFirebaseTokenView
+    EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
+    UserAddFirebaseTokenView, UserProfileView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -37,13 +37,15 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    path('activate-profile/', ActivateProfileView.as_view()),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('activate-profile/', ActivateProfileView.as_view()),
+
     path('events/subscribed/', EventsSubscribedView.as_view()),
     path('events/attended/', EventsAttendedView.as_view()),
     path('events/created/', EventsCreatedView.as_view()),
     path('events/finished/', EventsFinishedView.as_view()),
     path('events/<int:pk>/subscribe/', EventSubscribeView.as_view()),
+    path('events/<int:pk>/unsubscribe/', EventUnsubscribeView.as_view()),
     path('events/<int:pk>/cancel/', CancelEventView.as_view()),
     path('events/<int:pk>/activate/', ActivateEventView.as_view()),
     path('events/<int:pk>/finish/', FinishEventView.as_view()),
@@ -54,8 +56,7 @@ urlpatterns = [
     path('users/me/add_fb_token/', UserAddFirebaseTokenView.as_view()),
     path('profiles/me/', MeProfilesView.as_view()),
     path('profiles/contacts/', ContactsView.as_view()),
-    path('userprofile/<int:pk>', MeUserProfileView.as_view()),
-    path('events/<int:pk>/unsubscribe/', EventUnsubscribeView.as_view()),
+    path('userprofile/<int:pk>/', UserProfileView.as_view()),
 
     path('api/schema/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),

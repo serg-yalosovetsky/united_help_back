@@ -46,37 +46,12 @@ class Profile(models.Model):
         return repr(self)
 
 
-class Voting(models.Model):
-    voting = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
-    applicant = models.ForeignKey('Profile', verbose_name='Profile', on_delete=models.CASCADE)
-    scores = models.IntegerField(default=0)
-
-    def __repr__(self):
-        return f'<Vote: {self.voting} {self.applicant}  {self.scores}>'
-
-    def __str__(self):
-        return repr(self)
-
-
 class City(models.Model):
     city = models.CharField(max_length=255)
     alias = models.TextField()
 
     def __repr__(self):
         return f'City {self.city}'
-
-    def __str__(self):
-        return repr(self)
-
-
-class Skill(models.Model):
-    name = models.CharField(max_length=255)
-    # description = models.TextField()
-    parents = models.ManyToManyField('self', blank=True)
-    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
-
-    def __repr__(self):
-        return f'Skill {self.name}'
 
     def __str__(self):
         return repr(self)
@@ -115,6 +90,34 @@ class Event(models.Model):
 
     def __str__(self):
         return repr(self)
+
+
+class Voting(models.Model):
+    voter = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
+    applicant = models.ForeignKey('Profile', verbose_name='Profile', on_delete=models.CASCADE)
+    event = models.ForeignKey('Event', verbose_name='Event', on_delete=models.CASCADE,)
+    score = models.IntegerField(default=0)
+
+    def __repr__(self):
+        return f'<Vote: {self.voter} to {self.applicant} in {self.event} {self.score}>'
+
+    def __str__(self):
+        return repr(self)
+
+
+
+class Skill(models.Model):
+    name = models.CharField(max_length=255)
+    # description = models.TextField()
+    parents = models.ManyToManyField('self', blank=True)
+    image = models.ImageField(upload_to='user_images/', null=True, blank=True,)
+
+    def __repr__(self):
+        return f'Skill {self.name}'
+
+    def __str__(self):
+        return repr(self)
+
 
 
 class EventLog(models.Model):
