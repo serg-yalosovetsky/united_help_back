@@ -1,4 +1,5 @@
 import datetime
+import json
 from contextlib import suppress
 from datetime import datetime as dt
 
@@ -98,12 +99,12 @@ class EventsView(viewsets.ModelViewSet):
         instance_data = instance_serializer.data
 
         update_items = {}
-        update_items_push = {}
+        # update_items_push = {}
         for k in data:
             if data[k] != instance_data[k]:
                 is_same = False
                 update_items[k] = data[k]
-                update_items_push[f'msgkey_{k}'] = data[k]
+                # update_items_push[f'msgkey_{k}'] = data[k]
 
         if not is_same:
             send_firebase_multiple_messages(
@@ -115,8 +116,10 @@ class EventsView(viewsets.ModelViewSet):
                 event_id=event_id,
                 image=request.build_absolute_uri(event.image.url),
                 event_name=event.name,
-                owner_name=event.owner.user.username,
-                **update_items_push,
+                actor_name=event.owner.user.username,
+                actor_profile_id=event.owner.id,
+                # **update_items_push,
+                _data=json.dumps(update_items),
             )
 
         serializer.is_valid(raise_exception=True)
@@ -346,11 +349,17 @@ class EventSubscribeView(APIView):
                     to_profile=Profile.Roles.organizer.name,
                     event_id=event_id,
                     event_to=event_to.capitalize(),
-                    image=request.build_absolute_uri(event.image.url),
+                    image=request.build_absolute_uri(user_volunteer_profile.first().image.url),
                     event_name=event.name,
-                    participant_name=user_volunteer_profile.first().user.username,
-                    participants=event.participants.count(),
-                    required=event.required_members,
+                    actor_name=user_volunteer_profile.first().user.username,
+                    actor_profile_id=user_volunteer_profile.first().id,
+                    # participants=event.participants.count(),
+                    # required=event.required_members,
+                    _data=json.dumps({
+                        'required': event.required_members,
+                        'participants': event.participants.count(),
+                    }),
+
                 )
                 message = f'You subscribed to event {event}'
                 status_code = 200
@@ -383,6 +392,9 @@ class EventUnsubscribeView(EventSubscribeView):
                     to_profile=Profile.Roles.organizer.name,
                     event_id=event_id,
                     event_to=event.to.name,
+                    event_name=event.name,
+                    actor_name=user_volunteer_profile.first().user.username,
+                    actor_profile_id=user_volunteer_profile.first().id,
                 )
                 message = f'You unsubscribed to event {event}'
                 status_code = 204
@@ -429,8 +441,10 @@ class FinishEventView(EventSubscribeView):
                     notify_type='finish',
                     to_profile=event.to.name,
                     event_id=event_id,
+                    event_to=event.to.name,
                     event_name=event.name,
-                    owner_name=event.owner.user.username,
+                    actor_name=event.owner.user.username,
+                    actor_profile_id=event.owner.id,
                 )
                 message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
                 status_code = 200
@@ -475,8 +489,10 @@ class CancelEventView(EventSubscribeView):
                     notify_type='cancel',
                     to_profile=event.to.name,
                     event_id=event_id,
+                    event_to=event.to.name,
                     event_name=event.name,
-                    owner_name=event.owner.user.username,
+                    actor_name=event.owner.user.username,
+                    actor_profile_id=event.owner.id,
                 )
                 message = f'You are canceled {event} with {eventlog} in {eventlog.log_date}'
                 status_code = 200
@@ -510,8 +526,10 @@ class ActivateEventView(EventSubscribeView):
                     notify_type='activate',
                     to_profile=event.to.name,
                     event_id=event_id,
+                    event_to=event.to.name,
                     event_name=event.name,
-                    owner_name=event.owner.user.username,
+                    actor_name=event.owner.user.username,
+                    actor_profile_id=event.owner.id,
                 )
                 message = f'You are activated {event}'
                 status_code = 200
@@ -663,14 +681,14 @@ class CommentView(viewsets.ModelViewSet):
             validated_data['text'],
             [event.owner.user, ],
             image=participant.image,
-            user_profile_id=participant.id,
             notify_type='review',
-            rating=validated_data['text'],
             to_profile=Profile.Roles.organizer.name,
             event_id=event.id,
             event_to=event_to,
             event_name=event.name,
-            reviewer_name=self.request.user.username,
+            actor_name=self.request.user.username,
+            actor_profile_id=participant.id,
+            _data=json.dumps({'rating': validated_data['score']}),
         )
 
 
