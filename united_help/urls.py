@@ -11,7 +11,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
     EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
-    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView
+    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView, ProfileUnsubscribeView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)

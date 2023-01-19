@@ -22,7 +22,7 @@ class EventsView(viewsets.ModelViewSet):
     serializer_class = EventSerializer
 
     def event_filters(self, queryset):
-        enabled = self.request.query_params.get('enabled')
+        active = self.request.query_params.get('active')
         name = self.request.query_params.get('name')
         employment = self.request.query_params.get('employment')
         city = self.request.query_params.get('city')
@@ -40,8 +40,8 @@ class EventsView(viewsets.ModelViewSet):
                 if (skill_obj := Skill.objects.filter(name=skill)).exists():
                     skill_objs.append(skill_obj.first())
 
-        if (bool_enabled := str_to_bool(enabled)) is not None:
-            queryset = queryset.filter(enabled=bool_enabled)
+        if (bool_active := str_to_bool(active)) is not None:
+            queryset = queryset.filter(active=bool_active)
         if name:
             if str_to_bool(search_in_description):
                 queryset = queryset.filter(Q(name__contains=name) | Q(description__contains=name))
@@ -88,7 +88,7 @@ class EventsView(viewsets.ModelViewSet):
                     notify_type='create',
                     to_profile=event.to.name,
                     event_id=event.id,
-                    event_to=event.to.name,
+                    event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
                     actor_name=event.owner.user.username,
                     actor_profile_id=event.owner.id,
@@ -347,13 +347,14 @@ class EventSubscribeView(APIView):
 
     def post(self, request, *args, **kwargs):
         event_id = int(kwargs.pop('pk'))
-        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
         if event.participants.all().count() < event.required_members:
             profiles = Profile.objects.filter(active=True, user=request.user)
             user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
             if user_volunteer_profile.exists():
                 event.participants.add(user_volunteer_profile.first())
-                event_to: str = event.to.name
+                event_to: str = Profile.Roles.labels[event.to]
+
                 send_firebase_multiple_messages(
                     f'{event_to.capitalize()} {user_volunteer_profile.first().user.username} приєднується до івента {event.name}.',
                     f'Набрано {event.participants.count()} з {event.required_members} {event_to}ів для допомоги в організації івента {event.name}.',
@@ -390,7 +391,7 @@ class EventUnsubscribeView(EventSubscribeView):
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
-        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
         if user_volunteer_profile.exists():
@@ -404,7 +405,7 @@ class EventUnsubscribeView(EventSubscribeView):
                     notify_type='subscribe',
                     to_profile=Profile.Roles.organizer.name,
                     event_id=event_id,
-                    event_to=event.to.name,
+                    event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
                     actor_name=user_volunteer_profile.first().user.username,
                     actor_profile_id=user_volunteer_profile.first().id,
@@ -426,11 +427,11 @@ class FinishEventView(EventSubscribeView):
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
-        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            if not event.enabled:
+            if not event.active:
                 message = f'You are already finished {event}'
                 status_code = 400
             else:
@@ -444,7 +445,7 @@ class FinishEventView(EventSubscribeView):
                 eventlog.volunteers_attended.add(*volunteers_attended)
                 eventlog.volunteers_subscribed.add(*event.participants.all())
                 if event.employment == Event.Employments.one_time:
-                    event.enabled = False
+                    event.active = False
                     event.save()
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
                                  set(owner_profile.following.all()))
@@ -456,7 +457,7 @@ class FinishEventView(EventSubscribeView):
                     notify_type='finish',
                     to_profile=event.to.name,
                     event_id=event_id,
-                    event_to=event.to.name,
+                    event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
                     actor_name=event.owner.user.username,
                     actor_profile_id=event.owner.id,
@@ -475,11 +476,11 @@ class CancelEventView(EventSubscribeView):
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
-        event = get_object_or_404(Event.objects.filter(enabled=True), pk=event_id)
+        event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            if not event.enabled:
+            if not event.active:
                 message = f'You are already canceled {event}'
                 status_code = 400
 
@@ -494,7 +495,7 @@ class CancelEventView(EventSubscribeView):
                 eventlog.save()
                 eventlog.volunteers_attended.add(*volunteers_attended)
                 eventlog.volunteers_subscribed.add(*event.participants.all())
-                event.enabled = False
+                event.active = False
                 event.save()
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
                                  set(owner_profile.following.all()))
@@ -506,7 +507,7 @@ class CancelEventView(EventSubscribeView):
                     notify_type='cancel',
                     to_profile=event.to.name,
                     event_id=event_id,
-                    event_to=event.to.name,
+                    event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
                     actor_name=event.owner.user.username,
                     actor_profile_id=event.owner.id,
@@ -529,11 +530,11 @@ class ActivateEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            if event.enabled:
+            if event.active:
                 message = f'You are already activated {event}'
                 status_code = 400
             else:
-                event.enabled = True
+                event.active = True
                 event.save()
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
                                  set(owner_profile.following.all()))
@@ -546,7 +547,7 @@ class ActivateEventView(EventSubscribeView):
                     notify_type='activate',
                     to_profile=event.to.name,
                     event_id=event_id,
-                    event_to=event.to.name,
+                    event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
                     actor_name=event.owner.user.username,
                     actor_profile_id=event.owner.id,
@@ -632,7 +633,7 @@ class ProfileSubscribeView(APIView):
 
     def post(self, request, **kwargs):
         profile_id = int(kwargs.pop('pk'))
-        profile = get_object_or_404(Profile.objects.filter(enabled=True), pk=profile_id)
+        profile = get_object_or_404(Profile.objects.filter(active=True), pk=profile_id)
         user: User = User.objects.get(id=request.user.id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         user_volunteer_or_refugee_profile = profiles.filter(
@@ -654,7 +655,7 @@ class ProfileUnsubscribeView(APIView):
 
     def post(self, request, **kwargs):
         profile_id = int(kwargs.pop('pk'))
-        profile = get_object_or_404(Profile.objects.filter(enabled=True), pk=profile_id)
+        profile = get_object_or_404(Profile.objects.filter(active=True), pk=profile_id)
         user: User = User.objects.get(id=request.user.id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         user_volunteer_or_refugee_profile = profiles.filter(
@@ -717,7 +718,7 @@ class CommentView(viewsets.ModelViewSet):
         print(f'{validated_data=}')
 
         event: Event = validated_data['event']
-        event_to: str = event.to.name
+        event_to: str = Profile.Roles.labels[event.to]
 
         voter = self.request.user
         participant = Profile.objects.filter(user=voter, role=event.to)
@@ -746,7 +747,7 @@ class CommentView(viewsets.ModelViewSet):
             notify_type='review',
             to_profile=Profile.Roles.organizer.name,
             event_id=event.pk,
-            event_to=event_to,
+            event_to=Profile.Roles.labels[event.to].capitalize(),
             event_name=event.name,
             actor_name=self.request.user.username,
             actor_profile_id=participant.id,

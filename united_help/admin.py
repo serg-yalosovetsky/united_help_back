@@ -14,8 +14,8 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('id', "name", "enabled", 'city', 'owner')
-    list_display_links = ('id', "name", "enabled",)
+    list_display = ('id', "name", "active", 'city', 'owner')
+    list_display_links = ('id', "name", "active",)
     search_fields = ["name", 'description', 'skills', ]
 
 

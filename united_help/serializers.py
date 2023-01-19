@@ -35,7 +35,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ('id', 'user', 'role', 'rating', 'active',
+        fields = ('id', 'user', 'role', 'rating', 'active', 'is_subscribe',
                   'image', 'skills', 'description', 'url', 'organization',
                   )
         read_only_fields = ('id', 'user', 'rating', 'active',)
@@ -119,10 +119,23 @@ class ActivateProfileSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
+    is_subscribe = serializers.SerializerMethodField()
+
+    def get_is_subscribe(self, obj):
+        if request := self.context.get('request'):
+            user = User.objects.get(id=request.user.id)
+            participant = Profile.objects.filter(user=user, role=obj.to)
+            is_participant = participant.exists() and participant.first() in obj.participants.all()
+            if is_participant:
+                return True
+            else:
+                return False
+        return None
+
 
     class Meta:
         model = Event
-        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members',
@@ -138,11 +151,11 @@ class EventSubscribeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        read_only_fields = ('id', 'active', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
                             'employment', 'owner', 'participants', 'skills',
                             'subscribed_members', 'required_members', 'to',)
-        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills',
                   'subscribed_members', 'required_members', 'to',)
@@ -172,13 +185,13 @@ class EventFinishedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        read_only_fields = ('id', 'active', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
                             'employment', 'owner', 'participants', 'skills',
                             'subscribed_members', 'required_members', 'to',
                             'comments_count', 'rating',
                             )
-        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills',
                   'subscribed_members', 'required_members', 'to',
@@ -247,11 +260,11 @@ class FinishEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        read_only_fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        read_only_fields = ('id', 'active', 'name', 'description', 'reg_date',
                             'start_time', 'end_time', 'image', 'city', 'location',
                             'employment', 'owner', 'participants', 'skills', 'to',
                             'required_members',)
-        fields = ('id', 'enabled', 'name', 'description', 'reg_date',
+        fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members', 'volunteers_attended')

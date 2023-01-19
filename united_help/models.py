@@ -27,7 +27,7 @@ class Profile(models.Model):
         admin = 0
         volunteer = 1
         organizer = 2
-        refugee = 30
+        refugee = 3
 
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     role = models.IntegerField(choices=Roles.choices)
@@ -68,7 +68,7 @@ class Event(models.Model):
         volunteer = 1
         refugee = 3
 
-    enabled = models.BooleanField(default=True)
+    active = models.BooleanField(default=True)
     name = models.CharField(max_length=255)
     description = models.TextField()
     reg_date = models.DateTimeField(auto_now_add=True)
