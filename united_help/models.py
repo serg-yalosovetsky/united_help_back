@@ -12,6 +12,7 @@ class User(DjangoUser):
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
     reg_date = models.DateTimeField(auto_now_add=True)
     firebase_tokens = models.TextField(default='')
+    following = models.ManyToManyField('Profile', related_name='following', blank=True)
 
     def __repr__(self):
         return f'User_{self.pk} {self.username}'
@@ -26,7 +27,7 @@ class Profile(models.Model):
         admin = 0
         volunteer = 1
         organizer = 2
-        refugee = 3
+        refugee = 30
 
     user = models.ForeignKey('User', verbose_name='User', on_delete=models.CASCADE)
     role = models.IntegerField(choices=Roles.choices)
@@ -37,7 +38,6 @@ class Profile(models.Model):
     description = models.TextField(null=True, blank=True,)
     url = models.TextField(null=True, blank=True,)
     organization = models.TextField(null=True, blank=True,)
-
 
     def __repr__(self):
         return f'<Profile: {self.user} {self.role}>'

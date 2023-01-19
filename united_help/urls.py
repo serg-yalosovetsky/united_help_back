@@ -11,7 +11,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
     EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
-    UserAddFirebaseTokenView, UserProfileView
+    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -54,9 +54,13 @@ urlpatterns = [
 
     path('users/me/', MeUserView.as_view()),
     path('users/me/add_fb_token/', UserAddFirebaseTokenView.as_view()),
+
     path('profiles/me/', MeProfilesView.as_view()),
     path('profiles/contacts/', ContactsView.as_view()),
     path('userprofile/<int:pk>/', UserProfileView.as_view()),
+
+    path('profiles/<int:pk>/subscribe/', ProfileSubscribeView.as_view()),
+    path('profiles/<int:pk>/unsubscribe/', ProfileUnsubscribeView.as_view()),
 
     path('api/schema/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),

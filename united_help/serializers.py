@@ -9,6 +9,16 @@ from django.core import exceptions as django_exceptions
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    is_subscribe = serializers.SerializerMethodField()
+
+    def get_is_subscribe(self, obj):
+        if request := self.context.get('request'):
+            user = User.objects.get(id=request.user.id)
+            if user.following.filter(id=obj.id).exists():
+                return True
+            else:
+                return False
+        return None
 
     def validate_role(self, value):
         """
@@ -109,6 +119,7 @@ class ActivateProfileSerializer(serializers.ModelSerializer):
 
 class EventSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
+
     class Meta:
         model = Event
         fields = ('id', 'enabled', 'name', 'description', 'reg_date',
@@ -336,8 +347,17 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ('id', 'event', 'user', 'parent', 'text', 'score', )
-        read_only_fields = ('id', 'user', )
+        fields = ('id', 'event', 'user', 'parent', 'text', 'score',)
+        read_only_fields = ('id', 'user',)
+
+
+class ProfileSubscribeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ('id', 'user', 'role', 'rating', 'active',
+                  'image', 'skills', 'description', 'url', 'organization',
+                  )
+        read_only_fields = ('id', 'user', 'rating', 'active',)
 
 
 class UserAddFirebaseTokenSerializer(serializers.Serializer):

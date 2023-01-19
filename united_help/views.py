@@ -1,4 +1,3 @@
-import datetime
 import json
 from contextlib import suppress
 from datetime import datetime as dt
@@ -11,8 +10,8 @@ from rest_framework.views import APIView
 from django.db.models import Q
 
 from united_help.helpers import str_to_bool, index_in_list, DATETIME_FORMAT
-from united_help.permissions import IsOrganizerOrReadOnly, IsOwnerOrCreateOnly, IsAdminOrReadOnly, \
-    IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer
+from united_help.permissions import IsOrganizerOrReadOnly, IsAdminOrReadOnly, \
+    IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer, IsVolunteerOrRefugee
 from united_help.serializers import *
 from united_help.models import *
 from united_help.services import send_firebase_multiple_messages
@@ -79,7 +78,21 @@ class EventsView(viewsets.ModelViewSet):
         user_organizer_profile = profiles.filter(role=Profile.Roles.organizer)
         if user_organizer_profile.exists():
             serializer.validated_data['owner'] = user_organizer_profile.first()
-            serializer.save()
+            event = serializer.save()
+            if event.owner_profile.following.exists():
+                send_firebase_multiple_messages(
+                    f'Organizer has created event {event.name}',
+                    f'Organizer {event.owner.user.username} has created event {event.name}',
+                    event.owner_profile.following.all(),
+                    image=event.image,
+                    notify_type='create',
+                    to_profile=event.to.name,
+                    event_id=event.id,
+                    event_to=event.to.name,
+                    event_name=event.name,
+                    actor_name=event.owner.user.username,
+                    actor_profile_id=event.owner.id,
+                )
         else:
             raise Http404('you are no organizer')
 
@@ -109,7 +122,7 @@ class EventsView(viewsets.ModelViewSet):
         if not is_same:
             send_firebase_multiple_messages(
                 f'Organizer {event.owner.user.username} changed івент {event.name}.',
-                f'{[ f"{k} is {v}" for k, v in update_items.items()] }',
+                f'{[f"{k} is {v}" for k, v in update_items.items()]}',
                 [participant.user for participant in event.participants],
                 notify_type='change',
                 to_profile=event.to.name,
@@ -274,7 +287,7 @@ class UserAddFirebaseTokenView(APIView):
     permission_classes = [permissions.IsAuthenticated, ]
     serializer_class = UserAddFirebaseTokenSerializer
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer: serializers.Serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
@@ -433,10 +446,12 @@ class FinishEventView(EventSubscribeView):
                 if event.employment == Event.Employments.one_time:
                     event.enabled = False
                     event.save()
+                users_to_send = (set([participant.user for participant in event.participants.all()]) |
+                                 set(owner_profile.following.all()))
                 send_firebase_multiple_messages(
                     f'Organizer has finished event {event.name}',
                     f'Organizer {event.owner.user.username} has finished event {event.name}',
-                    [volunteers.user for volunteers in event.participants.all()],
+                    list(users_to_send),
                     image=event.image,
                     notify_type='finish',
                     to_profile=event.to.name,
@@ -481,10 +496,12 @@ class CancelEventView(EventSubscribeView):
                 eventlog.volunteers_subscribed.add(*event.participants.all())
                 event.enabled = False
                 event.save()
+                users_to_send = (set([participant.user for participant in event.participants.all()]) |
+                                 set(owner_profile.following.all()))
                 send_firebase_multiple_messages(
                     f'Organizer {event.owner.user.username} has canceled event {event.name}',
                     validated_data['message'],
-                    [volunteers.user for volunteers in event.participants.all()],
+                    list(users_to_send),
                     image=event.image,
                     notify_type='cancel',
                     to_profile=event.to.name,
@@ -518,10 +535,13 @@ class ActivateEventView(EventSubscribeView):
             else:
                 event.enabled = True
                 event.save()
+                users_to_send = (set([participant.user for participant in event.participants.all()]) |
+                                 set(owner_profile.following.all()))
+                set([i for i in range(1, 6)]) | set([i for i in range(3, 8)])
                 send_firebase_multiple_messages(
                     f'Organizer has activated event {event.name}',
                     f'Organizer {event.owner.user.username} has activated event {event.name}',
-                    [participant.user for participant in event.participants.all()],
+                    list(users_to_send),
                     image=event.image,
                     notify_type='activate',
                     to_profile=event.to.name,
@@ -550,7 +570,7 @@ class MeUserView(GenericAPIView):
     serializer_class = UserGetSerializer
     queryset = User.objects.all()
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset)
         return Response(serializer.data)
@@ -604,8 +624,49 @@ class ProfileView(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def update(self, request, *args, **kwargs):
-        super(ProfileView, self).update()
+
+class ProfileSubscribeView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsVolunteerOrRefugee]
+    serializer_class = ProfileSubscribeSerializer
+    queryset = Profile.objects.all()
+
+    def post(self, request, **kwargs):
+        profile_id = int(kwargs.pop('pk'))
+        profile = get_object_or_404(Profile.objects.filter(enabled=True), pk=profile_id)
+        user: User = User.objects.get(id=request.user.id)
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        user_volunteer_or_refugee_profile = profiles.filter(
+            Q(role=Profile.Roles.refugee) | Q(role=Profile.Roles.volunteer))
+        if user_volunteer_or_refugee_profile.exists():
+            user.following.add(profile)
+            message = f'You subscribed to organizer {profile.organization}'
+            status_code = 200
+        else:
+            message = f'You are not a volunteer or refugee'
+            status_code = 403
+        return Response(message, status=status_code)
+
+
+class ProfileUnsubscribeView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsVolunteerOrRefugee]
+    serializer_class = ProfileSubscribeSerializer
+    queryset = Profile.objects.all()
+
+    def post(self, request, **kwargs):
+        profile_id = int(kwargs.pop('pk'))
+        profile = get_object_or_404(Profile.objects.filter(enabled=True), pk=profile_id)
+        user: User = User.objects.get(id=request.user.id)
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        user_volunteer_or_refugee_profile = profiles.filter(
+            Q(role=Profile.Roles.refugee) | Q(role=Profile.Roles.volunteer))
+        if user_volunteer_or_refugee_profile.exists():
+            user.following.remove(profile)
+            message = f'You unsubscribed to organizer {profile.organization}'
+            status_code = 204
+        else:
+            message = f'You are not a volunteer or refugee'
+            status_code = 403
+        return Response(message, status=status_code)
 
 
 class ActivateProfileView(UpdateAPIView):
@@ -673,7 +734,8 @@ class CommentView(viewsets.ModelViewSet):
         if isinstance(score, float):
             vote = Voting.objects.filter(voter=voter, applicant=event.owner, event=event)
             if vote.exists():
-                return HttpResponseBadRequest(f'You are already rate {event.owner.user.username} in event {event.name}!')
+                return HttpResponseBadRequest(
+                    f'You are already rate {event.owner.user.username} in event {event.name}!')
             Voting.objects.create(voter=voter, applicant=event.owner, event=event, score=score)
 
         send_firebase_multiple_messages(
@@ -683,7 +745,7 @@ class CommentView(viewsets.ModelViewSet):
             image=participant.image,
             notify_type='review',
             to_profile=Profile.Roles.organizer.name,
-            event_id=event.id,
+            event_id=event.pk,
             event_to=event_to,
             event_name=event.name,
             actor_name=self.request.user.username,

@@ -2,53 +2,18 @@ from rest_framework import permissions
 from united_help.models import User, Profile
 
 
-class IsOwnerOrReadOnly(permissions.BasePermission):
-    """
-    Custom permission to only allow owners of an object to edit it.
-    """
+class IsReadOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return obj.owner == request.user
+        return request.method in permissions.SAFE_METHODS
 
 
-class IsOwnerOrCreateOnly(permissions.BasePermission):
-    """
-    Custom permission to only allow owners of an object to edit it and everyone creates new.
-    """
+class IsCreateOnly(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method == 'POST':
-            return True
-        if hasattr(obj, 'owner'):
-            return obj.owner.id == request.user.id
-        if hasattr(obj, 'user'):
-            return obj.user == request.user.id
-        return True
+        return request.method == 'POST'
 
 
-class IsAdminOrOwnerOrCreateOnly(IsOwnerOrCreateOnly):
-    """
-    Custom permission to only allow owners of an object to edit it and everyone creates new.
-    """
+class IsOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        user = User.objects.get(id=request.user.id)
-        if user.profile_set.filter(role=Profile.Roles.admin).exists():
-            return True
-        return super().has_object_permission(request, view, obj)
-
-
-class IsAuthenticatedOrCreateOnly(permissions.BasePermission):
-    """
-    Custom permission to only allow owners of an object to edit it and everyone creates new and authenticated to view.
-    """
-    def has_object_permission(self, request, view, obj):
-        if request.method == 'POST':
-            return True
-        if bool(
-            request.method in permissions.SAFE_METHODS or
-            request.user and request.user.is_authenticated
-        ):
-            return True
         return obj.owner == request.user
 
 
@@ -58,24 +23,10 @@ class IsAdmin(permissions.BasePermission):
         return user.profile_set.filter(role=Profile.Roles.admin).exists()
 
 
-class IsAdminOrReadOnly(IsAdmin):
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
-
-
 class IsOrganizer(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         user = User.objects.get(id=request.user.id)
         return user.profile_set.filter(role=Profile.Roles.organizer).exists()
-
-
-class IsOrganizerOrReadOnly(IsOrganizer):
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
 
 
 class IsVolunteer(permissions.BasePermission):
@@ -84,22 +35,83 @@ class IsVolunteer(permissions.BasePermission):
         return user.profile_set.filter(role=Profile.Roles.volunteer).exists()
 
 
-class IsVolunteerOrReadOnly(IsVolunteer):
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
-
-
 class IsRefugee(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         user = User.objects.get(id=request.user.id)
         return user.profile_set.filter(role=Profile.Roles.refugee).exists()
 
 
-class IsRefugeeOrReadOnly(IsRefugee):
+class IsOwnerOrReadOnly(IsReadOnly, IsOwner):
+    """
+    Custom permission to only allow owners of an object to edit it.
+    """
     def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return super().has_object_permission(request, view, obj)
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsOwner).has_object_permission(request, view, obj))
 
+
+class IsCreateOrReadOnly(IsReadOnly, IsCreateOnly):
+    """
+    Custom permission to only allow owners of an object to edit it.
+    """
+    def has_object_permission(self, request, view, obj):
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsCreateOnly).has_object_permission(request, view, obj))
+
+
+class IsOwnerOrCreateOnly(IsCreateOnly, IsOwner):
+    """
+    Custom permission to only allow owners of an object to edit it and everyone creates new.
+    """
+    def has_object_permission(self, request, view, obj):
+        return (super(IsCreateOnly).has_object_permission(request, view, obj) or
+                super(IsOwner).has_object_permission(request, view, obj))
+
+
+class IsAdminOrOwnerOrCreateOnly(IsOwnerOrCreateOnly, IsAdmin):
+    """
+    Custom permission to only allow owners of an object to edit it and everyone creates new.
+    """
+    def has_object_permission(self, request, view, obj):
+        return (super(IsOwnerOrCreateOnly).has_object_permission(request, view, obj) or
+                super(IsAdmin).has_object_permission(request, view, obj))
+
+
+class IsAuthenticatedOrCreateOnly(IsCreateOrReadOnly):
+    """
+    Custom permission to only allow owners of an object to edit it and everyone creates new and authenticated to view.
+    """
+    def has_object_permission(self, request, view, obj):
+        if super(IsCreateOrReadOnly).has_object_permission(request, view, obj):
+            return True
+        return obj.owner == request.user
+
+
+class IsAdminOrReadOnly(IsAdmin, IsReadOnly):
+    def has_object_permission(self, request, view, obj):
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsAdmin).has_object_permission(request, view, obj))
+
+
+class IsOrganizerOrReadOnly(IsOrganizer, IsReadOnly):
+    def has_object_permission(self, request, view, obj):
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsOrganizer).has_object_permission(request, view, obj))
+
+
+class IsVolunteerOrReadOnly(IsVolunteer, IsReadOnly):
+    def has_object_permission(self, request, view, obj):
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsVolunteer).has_object_permission(request, view, obj))
+
+
+class IsVolunteerOrRefugee(IsVolunteer, IsRefugee):
+    def has_object_permission(self, request, view, obj):
+        return (super(IsVolunteer).has_object_permission(request, view, obj) or
+                super(IsRefugee).has_object_permission(request, view, obj))
+
+
+class IsRefugeeOrReadOnly(IsRefugee, IsReadOnly):
+    def has_object_permission(self, request, view, obj):
+        return (super(IsReadOnly).has_object_permission(request, view, obj) or
+                super(IsRefugee).has_object_permission(request, view, obj))
