@@ -14,7 +14,7 @@ from united_help.permissions import IsOrganizerOrReadOnly, IsAdminOrReadOnly, \
     IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer, IsVolunteerOrRefugee
 from united_help.serializers import *
 from united_help.models import *
-from united_help.services import send_firebase_multiple_messages
+from united_help.services import send_firebase_multiple_messages, get_fine_location
 
 
 class EventsView(viewsets.ModelViewSet):
@@ -78,6 +78,12 @@ class EventsView(viewsets.ModelViewSet):
         user_organizer_profile = profiles.filter(role=Profile.Roles.organizer)
         if user_organizer_profile.exists():
             serializer.validated_data['owner'] = user_organizer_profile.first()
+            if (not serializer.validated_data['location_lat'] or
+                    not serializer.validated_data['location_lon']):
+                location = get_fine_location(serializer.validated_data['location'])
+                serializer.validated_data['location_lat'] = location[0]
+                serializer.validated_data['location_lon'] = location[1]
+                serializer.validated_data['location_display'] = location[2]
             event = serializer.save()
             if event.owner_profile.following.exists():
                 send_firebase_multiple_messages(

@@ -138,7 +138,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills', 'to',
-                  'required_members',
+                  'required_members', 'is_subscribe',
                   )
         read_only_fields = ('id', 'owner', 'reg_date')
 

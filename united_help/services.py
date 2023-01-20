@@ -1,5 +1,7 @@
 from firebase_admin import messaging
 from rest_framework.utils import json
+import requests
+import urllib.parse
 
 from united_help.models import User
 
@@ -24,6 +26,47 @@ def send_token_push(title, body, tokens):
         tokens=tokens,
     )
     messaging.send_multicast(message)
+
+
+def get_fine_location(string_location: str):
+
+    is_three_word_location = True
+    separator = '.'
+
+    if len(string_location.split()) == 3 or len(string_location.split('.')) == 3:
+        if len(string_location.split()) == 3:
+            separator = ''
+
+        for word in string_location.split(separator):
+            if not word.isalpha():
+                is_three_word_location = False
+                break
+    else:
+        is_three_word_location = False
+
+    if is_three_word_location:
+        three_word_location = '.'.join(string_location.split(separator))
+        url = f'https://w3w.co/{three_word_location}?alias={three_word_location}'
+        response = requests.get(url).text
+        start = response.find('https://mapapi.what3words.com/map/minimap?lat=') + len(
+                                                'https://mapapi.what3words.com/map/minimap?')
+        finish = start + 50
+        parse_text = response[start: finish]
+        lat = parse_text[parse_text.find('lat=')+4: parse_text.find('&')]
+        lon_start = parse_text.find('lng=')
+        lon = parse_text[lon_start+4: parse_text[lon_start:].find('&') + lon_start]
+        display_location_prestart = response.find('og:description') + len('og:description"')
+        display_location_start = response[display_location_prestart:].find('"') + display_location_prestart + 1
+        display_location_finish = response[display_location_start:].find('"') + display_location_start
+        display_location = response[display_location_start: display_location_finish]
+    else:
+        URL = 'https://nominatim.openstreetmap.org/search/{}?format=json'
+        url = URL.format(urllib.parse.quote(string_location))
+        response = requests.get(url).json()
+        lat = response[0]["lat"]
+        lon = response[0]["lon"]
+        display_location = response[0]["display_name"]
+    return lat, lon, display_location
 
 
 def send_firebase_multiple_messages(title: str, message: str, users: list[User] | str, **kwargs):
