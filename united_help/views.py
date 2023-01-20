@@ -25,7 +25,7 @@ class EventsView(viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         for event in queryset:
             if not event.location_lat or not event.location_lon:
-                lat, lon, name = get_fine_location(event.location)
+                lat, lon, name = get_fine_location(event.city.city, event.location)
                 event.location_lat = lat
                 event.location_lon = lon
                 event.location_display = name
@@ -92,7 +92,8 @@ class EventsView(viewsets.ModelViewSet):
             serializer.validated_data['owner'] = user_organizer_profile.first()
             if (not serializer.validated_data['location_lat'] or
                     not serializer.validated_data['location_lon']):
-                lat, lon, name = get_fine_location(serializer.validated_data['location'])
+                lat, lon, name = get_fine_location(serializer.validated_data['city'].city,
+                                                   serializer.validated_data['location'])
                 serializer.validated_data['location_lat'] = lat
                 serializer.validated_data['location_lon'] = lon
                 serializer.validated_data['location_display'] = name
@@ -130,7 +131,8 @@ class EventsView(viewsets.ModelViewSet):
         instance_data = instance_serializer.data
 
         if (data['location'] != instance_data['location']):
-            lat, lon, name = get_fine_location(serializer.validated_data['location'])
+            lat, lon, name = get_fine_location(serializer.validated_data['city'].city,
+                                               serializer.validated_data['location'])
             serializer.validated_data['location_lat'] = lat
             serializer.validated_data['location_lon'] = lon
             serializer.validated_data['location_display'] = name

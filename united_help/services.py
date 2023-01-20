@@ -6,6 +6,9 @@ import urllib.parse
 from united_help.models import User
 
 
+COUNTRY_NAME = 'Украина'
+
+
 def send_topic_push(topic, title, body):
     message = messaging.Message(
         notification=messaging.Notification(
@@ -28,7 +31,7 @@ def send_token_push(title, body, tokens):
     messaging.send_multicast(message)
 
 
-def get_fine_location(string_location: str):
+def get_fine_location(city: str, string_location: str):
 
     is_three_word_location = True
     separator = '.'
@@ -61,8 +64,12 @@ def get_fine_location(string_location: str):
         display_location = response[display_location_start: display_location_finish]
     else:
         URL = 'https://nominatim.openstreetmap.org/search/{}?format=json'
-        url = URL.format(urllib.parse.quote(string_location))
+        url = URL.format(urllib.parse.quote(f'{COUNTRY_NAME} {city} {string_location}'))
         response = requests.get(url).json()
+        if not response:
+            url = URL.format(urllib.parse.quote(f'{COUNTRY_NAME} {string_location}'))
+            response = requests.get(url).json()
+
         lat = response[0]["lat"]
         lon = response[0]["lon"]
         display_location = response[0]["display_name"]
