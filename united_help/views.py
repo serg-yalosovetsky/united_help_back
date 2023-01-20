@@ -80,10 +80,10 @@ class EventsView(viewsets.ModelViewSet):
             serializer.validated_data['owner'] = user_organizer_profile.first()
             if (not serializer.validated_data['location_lat'] or
                     not serializer.validated_data['location_lon']):
-                location = get_fine_location(serializer.validated_data['location'])
-                serializer.validated_data['location_lat'] = location[0]
-                serializer.validated_data['location_lon'] = location[1]
-                serializer.validated_data['location_display'] = location[2]
+                lat, lon, name = get_fine_location(serializer.validated_data['location'])
+                serializer.validated_data['location_lat'] = lat
+                serializer.validated_data['location_lon'] = lon
+                serializer.validated_data['location_display'] = name
             event = serializer.save()
             if event.owner_profile.following.exists():
                 send_firebase_multiple_messages(
@@ -116,6 +116,12 @@ class EventsView(viewsets.ModelViewSet):
         event = Event.objects.get(id=event_id)
         instance_serializer = self.get_serializer(event)
         instance_data = instance_serializer.data
+
+        if (data['location'] != instance_data['location']):
+            lat, lon, name = get_fine_location(serializer.validated_data['location'])
+            serializer.validated_data['location_lat'] = lat
+            serializer.validated_data['location_lon'] = lon
+            serializer.validated_data['location_display'] = name
 
         update_items = {}
         # update_items_push = {}
