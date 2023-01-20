@@ -35,7 +35,7 @@ def get_fine_location(string_location: str):
 
     if len(string_location.split()) == 3 or len(string_location.split('.')) == 3:
         if len(string_location.split()) == 3:
-            separator = ''
+            separator = ' '
 
         for word in string_location.split(separator):
             if not word.isalpha():

@@ -21,6 +21,18 @@ class EventsView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrReadOnly]
     serializer_class = EventSerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        for event in queryset:
+            if not event.location_lat or not event.location_lon:
+                lat, lon, name = get_fine_location(event.location)
+                event.location_lat = lat
+                event.location_lon = lon
+                event.location_display = name
+                event.save()
+
+        return super().list(request, *args, **kwargs)
+
     def event_filters(self, queryset):
         active = self.request.query_params.get('active')
         name = self.request.query_params.get('name')

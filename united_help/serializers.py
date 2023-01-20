@@ -137,6 +137,7 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
+                  'location_lat', 'location_lon',
                   'employment', 'owner', 'participants', 'skills', 'to',
                   'required_members', 'is_subscribe',
                   )
