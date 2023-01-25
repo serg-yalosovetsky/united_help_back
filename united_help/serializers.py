@@ -208,26 +208,18 @@ class FinishEventSerializer(serializers.ModelSerializer):
         updated_fields = []
         many_to_many_fields = ['volunteers_attended', ]
         # instance = EventLog._default_manager.create(**validated_data)
-        print(0)
         for field in validated_data.keys():
-            print(1)
             value = validated_data[field]
-            print(2)
             if field in many_to_many_fields:
-                print(3)
                 if value == -1:
-                    print(4)
                     getattr(instance, field).set(*instance.volunteers_subscribed.all())
                 else:
-                    print(5)
                     volunteers = Profile.objects.filter(pk__in=value)
                     getattr(instance, field).set(volunteers)
             else:
-                print(6)
                 setattr(instance, field, value)
                 updated_fields.append(field)
 
-        print(7)
         instance.save(update_fields=updated_fields)
         return instance
 
@@ -238,24 +230,17 @@ class FinishEventSerializer(serializers.ModelSerializer):
         instance = EventLog._default_manager.create(**validated_data)
         print(0)
         for field in validated_data.keys():
-            print(1)
             value = validated_data[field]
-            print(2)
             if field in many_to_many_fields:
-                print(3)
                 if value == -1:
-                    print(4)
                     getattr(instance, field).set(*instance.volunteers_subscribed.all())
                 else:
-                    print(5)
                     volunteers = Profile.objects.filter(pk__in=value)
                     getattr(instance, field).set(volunteers)
             else:
-                print(6)
                 setattr(instance, field, value)
                 updated_fields.append(field)
 
-        print(7)
         instance.save(update_fields=updated_fields)
         return instance
 

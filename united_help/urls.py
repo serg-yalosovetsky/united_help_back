@@ -11,7 +11,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
     EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
-    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView, ProfileUnsubscribeView
+    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView, ProfileUnsubscribeView, RateParticipantsView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -49,6 +49,7 @@ urlpatterns = [
     path('events/<int:pk>/cancel/', CancelEventView.as_view()),
     path('events/<int:pk>/activate/', ActivateEventView.as_view()),
     path('events/<int:pk>/finish/', FinishEventView.as_view()),
+    path('events/<int:pk>/rate_participants/', RateParticipantsView.as_view()),
     path('events/<int:pk>/comments/', CommentsEventView.as_view()),
     path('events/<int:pk>/usercomments/', UserCommentsEventView.as_view()),
 

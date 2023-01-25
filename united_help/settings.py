@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'rest_framework_simplejwt',
     'django_filters',
+    'django_celery_results',
 ]
 
 REST_FRAMEWORK = {
@@ -117,7 +118,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'united_help.wsgi.application'
 
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
 
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache',
+    }
+}
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
@@ -153,7 +163,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Kyiv'
 
 USE_I18N = True
 
@@ -167,6 +177,7 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_ROOT = BASE_DIR / 'media'
+BASE_URL = ''
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field

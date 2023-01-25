@@ -3,7 +3,9 @@ from contextlib import suppress
 from datetime import datetime as dt
 
 from django.http import Http404, HttpResponseBadRequest
+from django.views.decorators.http import require_http_methods
 from rest_framework import permissions, viewsets, status
+from rest_framework.decorators import api_view
 from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or_404, ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,6 +17,13 @@ from united_help.permissions import IsOrganizerOrReadOnly, IsAdminOrReadOnly, \
 from united_help.serializers import *
 from united_help.models import *
 from united_help.services import send_firebase_multiple_messages, get_fine_location
+from united_help.settings import MEDIA_URL, MEDIA_ROOT, BASE_URL
+
+
+def set_base_url(request, event):
+    global BASE_URL
+    if BASE_URL == '':
+        BASE_URL = request.build_absolute_uri(event.image.url).replace(event.image.url, '')
 
 
 class EventsView(viewsets.ModelViewSet):
@@ -23,6 +32,8 @@ class EventsView(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+
+        event = None
         for event in queryset:
             if not event.location_lat or not event.location_lon:
                 lat, lon, name = get_fine_location(event.city.city, event.location)
@@ -30,6 +41,7 @@ class EventsView(viewsets.ModelViewSet):
                 event.location_lon = lon
                 event.location_display = name
                 event.save()
+        set_base_url(request, event)
 
         return super().list(request, *args, **kwargs)
 
@@ -201,6 +213,7 @@ class EventsAttendedView(ListAPIView):
             event_ids = list(set(event_logs.values_list('event_id')))
             event_ids = [i[0] for i in event_ids]
             events = Event.objects.filter(pk__in=event_ids)
+            set_base_url(self.request, events.first())
             return events
         return self.queryset.filter(id=-1)
 
@@ -215,6 +228,7 @@ class EventsCreatedView(ListAPIView):
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists():
             events = self.queryset.filter(owner=owner_profile.first())
+            set_base_url(self.request, events.first())
             return events
         return self.queryset.filter(id=-1)
 
@@ -232,6 +246,7 @@ class EventsFinishedView(ListAPIView):
             event_ids = list(set(event_logs.values_list('event_id')))
             event_ids = [i[0] for i in event_ids]
             events = Event.objects.filter(pk__in=event_ids)
+            set_base_url(self.request, events.first())
             return events
         return self.queryset.filter(id=-1)
 
@@ -377,6 +392,10 @@ class EventSubscribeView(APIView):
     def post(self, request, *args, **kwargs):
         event_id = int(kwargs.pop('pk'))
         event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
+        if event.owner.user.id == request.user.id:
+            message = f'Не займайся хуйнею!'
+            status_code = 400
+            return Response(message, status=status_code)
         if event.participants.all().count() < event.required_members:
             profiles = Profile.objects.filter(active=True, user=request.user)
             user_volunteer_profile = profiles.filter(role=Profile.Roles.volunteer)
@@ -450,6 +469,59 @@ class EventUnsubscribeView(EventSubscribeView):
         return Response(message, status=status_code)
 
 
+def finish_event(event, data=None, serializer=None, request=None, event_url=None):
+    if not event.active:
+        message = f'You are already finished {event}'
+        status_code = 400
+        return message, status_code
+    else:
+        eventlog = EventLog(event=event, happened=True)
+        eventlog.save()
+
+        if data:
+            serializer: serializers.Serializer = serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            validated_data = serializer.validated_data
+            volunteers_attended = validated_data['volunteers_attended']
+            eventlog.volunteers_attended.add(*volunteers_attended)
+
+        eventlog.volunteers_subscribed.add(*event.participants.all())
+        if event.employment == Event.Employments.one_time:
+            event.active = False
+            event.save()
+        users_to_send = [participant.user for participant in event.participants.all()]
+        event_url = event_url or request.build_absolute_uri(event.image.url)
+        send_firebase_multiple_messages(
+            f'Organizer has finished event {event.name}',
+            f'Organizer {event.owner.user.username} has finished event {event.name}',
+            list(users_to_send),
+            image=event_url,
+            notify_type='finish',
+            to_profile=Profile.Roles.labels[event.to].capitalize(),
+            event_id=event.id,
+            event_to=Profile.Roles.labels[event.to].capitalize(),
+            event_name=event.name,
+            actor_name=event.owner.user.username,
+            actor_profile_id=event.owner.id,
+        )
+        send_firebase_multiple_messages(
+            f'Your event {event.name} finished',
+            f'You now can rate participants',
+            [event.owner.user],
+            notify_type='start',
+            to_profile=Profile.Roles.organizer.name.capitalize(),
+            event_id=event.id,
+            image=f'{BASE_URL}{event.image.url}',
+            event_name=event.name,
+            actor_name=event.owner.user.username,
+            actor_profile_id=event.owner.id,
+            _data=json.dumps({'eventlog': eventlog.pk, 'participants': event.participants}),
+        )
+        message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
+        status_code = 200
+        return message, status_code
+
+
 class FinishEventView(EventSubscribeView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
     serializer_class = FinishEventSerializer
@@ -460,39 +532,26 @@ class FinishEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
-            if not event.active:
-                message = f'You are already finished {event}'
-                status_code = 400
-            else:
-                serializer: serializers.Serializer = self.serializer_class(data=request.data)
-                serializer.is_valid(raise_exception=True)
-                validated_data = serializer.validated_data
-                volunteers_attended = validated_data['volunteers_attended']
-                eventlog = EventLog(event=event,
-                                    happened=True)
-                eventlog.save()
-                eventlog.volunteers_attended.add(*volunteers_attended)
-                eventlog.volunteers_subscribed.add(*event.participants.all())
-                if event.employment == Event.Employments.one_time:
-                    event.active = False
-                    event.save()
-                users_to_send = (set([participant.user for participant in event.participants.all()]) |
-                                 set([follower.user for follower in owner_profile.user.following.all()]))
-                send_firebase_multiple_messages(
-                    f'Organizer has finished event {event.name}',
-                    f'Organizer {event.owner.user.username} has finished event {event.name}',
-                    list(users_to_send),
-                    image=request.build_absolute_uri(event.image.url),
-                    notify_type='finish',
-                    to_profile=Profile.Roles.labels[event.to].capitalize(),
-                    event_id=event_id,
-                    event_to=Profile.Roles.labels[event.to].capitalize(),
-                    event_name=event.name,
-                    actor_name=event.owner.user.username,
-                    actor_profile_id=event.owner.id,
-                )
-                message = f'You are finished {event} with {eventlog} in {eventlog.log_date}'
-                status_code = 200
+            message, status_code = finish_event(event, serializer=self.serializer_class, data=request.data, request=request)
+        else:
+            message = f'You are not a organizer owner'
+            status_code = 403
+        return Response(message, status=status_code)
+
+class RateParticipantsView(EventSubscribeView):
+    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    #TODO: implement serializer to get list of attended users and also optional rating and optional comment
+    # of every participant
+
+    def post(self, request, *args, **kwargs):
+        eventlog_id = kwargs.pop('pk')
+        eventlog = get_object_or_404(EventLog.objects.filter(volunteers_attended__isnull=True), pk=eventlog_id)
+        event = eventlog.event
+        profiles = Profile.objects.filter(active=True, user=request.user)
+        owner_profile = profiles.filter(role=Profile.Roles.organizer)
+        if owner_profile.exists() and event.owner == owner_profile.first():
+            message, status_code = finish_event(event, serializer=self.serializer_class, data=request.data, request=request)
+
         else:
             message = f'You are not a organizer owner'
             status_code = 403
@@ -669,7 +728,7 @@ class ProfileSubscribeView(APIView):
         user: User = User.objects.get(id=request.user.id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         user_volunteer_or_refugee_profile = profiles.filter(
-            Q(role=Profile.Roles.refugee) | Q(role=Profile.Roles.volunteer))
+                Q(role=Profile.Roles.refugee) | Q(role=Profile.Roles.volunteer))
         if user_volunteer_or_refugee_profile.exists():
             user.following.add(profile)
             message = f'You subscribed to organizer {profile.organization}'
