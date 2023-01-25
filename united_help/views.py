@@ -37,14 +37,15 @@ class EventsView(viewsets.ModelViewSet):
         active = self.request.query_params.get('active')
         name = self.request.query_params.get('name')
         employment = self.request.query_params.get('employment')
+        print(f'{employment=}')
         city = self.request.query_params.get('city')
-        skills = [self.request.query_params.get(f'skill')]
+        skills = []
         skills_inclusive = self.request.query_params.get(f'skills_inclusive')
-        search_in_description = self.request.query_params.get(f'search_in_description')
+        search_in_description = self.request.query_params.get(f'search_in_description', 'True')
         start_time = self.request.query_params.get(f'start_time')
         end_time = self.request.query_params.get(f'end_time')
 
-        for i in range(10):
+        for i in range(30):
             skills.append(self.request.query_params.get(f'skill{i}'))
         skill_objs = []
         for skill in skills:
@@ -60,8 +61,10 @@ class EventsView(viewsets.ModelViewSet):
             else:
                 queryset = queryset.filter(name__contains=name)
         if employment:
+            print(f'{employment=}')
             employment_int = index_in_list(Event.Employments.names, employment)
-            if employment_int > 0:
+            print(f'{employment_int=}')
+            if employment_int >= 0:
                 queryset = queryset.filter(employment=employment_int)
         if city:
             queryset = queryset.filter(city__alias__contains=city)
@@ -103,9 +106,9 @@ class EventsView(viewsets.ModelViewSet):
                     f'Organizer has created event {event.name}',
                     f'Organizer {event.owner.user.username} has created event {event.name}',
                     event.owner_profile.following.all(),
-                    image=event.image,
-                    notify_type='create',
-                    to_profile=event.to.name,
+                    image=self.request.build_absolute_uri(event.image.url),
+                    notify_type='change',
+                    to_profile=Profile.Roles.labels[event.to].capitalize(),
                     event_id=event.id,
                     event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
@@ -151,7 +154,7 @@ class EventsView(viewsets.ModelViewSet):
                 f'{[f"{k} is {v}" for k, v in update_items.items()]}',
                 [participant.user for participant in event.participants],
                 notify_type='change',
-                to_profile=event.to.name,
+                to_profile=Profile.Roles.labels[event.to].capitalize(),
                 event_id=event_id,
                 image=request.build_absolute_uri(event.image.url),
                 event_name=event.name,
@@ -427,7 +430,7 @@ class EventUnsubscribeView(EventSubscribeView):
                     f'You are lost one of volunteers in {event.name}',
                     f'Volunteer {user_volunteer_profile.first().user.username} unsubscribed to event {event.name}',
                     [event.owner.user, ],
-                    image=user_volunteer_profile.first().image,
+                    image=request.build_absolute_uri(user_volunteer_profile.first().image.url),
                     notify_type='subscribe',
                     to_profile=Profile.Roles.organizer.name,
                     event_id=event_id,
@@ -474,14 +477,14 @@ class FinishEventView(EventSubscribeView):
                     event.active = False
                     event.save()
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
-                                 set(owner_profile.following.all()))
+                                 set([follower.user for follower in owner_profile.user.following.all()]))
                 send_firebase_multiple_messages(
                     f'Organizer has finished event {event.name}',
                     f'Organizer {event.owner.user.username} has finished event {event.name}',
                     list(users_to_send),
-                    image=event.image,
+                    image=request.build_absolute_uri(event.image.url),
                     notify_type='finish',
-                    to_profile=event.to.name,
+                    to_profile=Profile.Roles.labels[event.to].capitalize(),
                     event_id=event_id,
                     event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
@@ -502,36 +505,36 @@ class CancelEventView(EventSubscribeView):
 
     def post(self, request, *args, **kwargs):
         event_id = kwargs.pop('pk')
-        event = get_object_or_404(Event.objects.filter(active=True), pk=event_id)
+        event = get_object_or_404(Event, pk=event_id)
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
+            owner_profile = owner_profile.first()
             if not event.active:
                 message = f'You are already canceled {event}'
-                status_code = 400
+                status_code = 200
 
             else:
                 serializer: serializers.Serializer = self.serializer_class(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 validated_data = serializer.validated_data
 
-                volunteers_attended = []
                 eventlog = EventLog(event=event,
                                     happened=True)
                 eventlog.save()
-                eventlog.volunteers_attended.add(*volunteers_attended)
                 eventlog.volunteers_subscribed.add(*event.participants.all())
                 event.active = False
                 event.save()
+                print(' event save')
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
-                                 set(owner_profile.following.all()))
+                                 set([follower.user for follower in owner_profile.user.following.all()]))
                 send_firebase_multiple_messages(
                     f'Organizer {event.owner.user.username} has canceled event {event.name}',
                     validated_data['message'],
                     list(users_to_send),
-                    image=event.image,
-                    notify_type='cancel',
-                    to_profile=event.to.name,
+                    image=request.build_absolute_uri(event.image.url),
+                    notify_type='change',
+                    to_profile=Profile.Roles.labels[event.to].capitalize(),
                     event_id=event_id,
                     event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
@@ -542,7 +545,7 @@ class CancelEventView(EventSubscribeView):
                 status_code = 200
 
         else:
-            message = f'You are not a organizer owner'
+            message = f'You are not a owner of event'
             status_code = 403
         return Response(message, status=status_code)
 
@@ -556,22 +559,25 @@ class ActivateEventView(EventSubscribeView):
         profiles = Profile.objects.filter(active=True, user=request.user)
         owner_profile = profiles.filter(role=Profile.Roles.organizer)
         if owner_profile.exists() and event.owner == owner_profile.first():
+            owner_profile = owner_profile.first()
             if event.active:
                 message = f'You are already activated {event}'
-                status_code = 400
+                status_code = 200
             else:
                 event.active = True
                 event.save()
+                print(set([participant.user for participant in event.participants.all()]))
+                print(set(owner_profile.user.following.all()))
                 users_to_send = (set([participant.user for participant in event.participants.all()]) |
-                                 set(owner_profile.following.all()))
-                set([i for i in range(1, 6)]) | set([i for i in range(3, 8)])
+                                 set([follower.user for follower in owner_profile.user.following.all()]))
+                print(users_to_send)
                 send_firebase_multiple_messages(
                     f'Organizer has activated event {event.name}',
                     f'Organizer {event.owner.user.username} has activated event {event.name}',
                     list(users_to_send),
-                    image=event.image,
-                    notify_type='activate',
-                    to_profile=event.to.name,
+                    image=request.build_absolute_uri(event.image.url),
+                    notify_type='change',
+                    to_profile=Profile.Roles.labels[event.to].capitalize(),
                     event_id=event_id,
                     event_to=Profile.Roles.labels[event.to].capitalize(),
                     event_name=event.name,
@@ -769,7 +775,7 @@ class CommentView(viewsets.ModelViewSet):
             f'{event_to.capitalize()} {self.request.user.username} create a review to event {event.name}',
             validated_data['text'],
             [event.owner.user, ],
-            image=participant.image,
+            image=self.request.build_absolute_uri(participant.image.url),
             notify_type='review',
             to_profile=Profile.Roles.organizer.name,
             event_id=event.pk,

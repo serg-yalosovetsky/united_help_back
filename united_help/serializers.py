@@ -278,7 +278,7 @@ class VotingSerializer(serializers.ModelSerializer):
 
         event = Event.objects.filter(id=data['event'])
         if not event.exists():
-            raise serializers.ValidationError(f'You are not a {event.to.name}!')
+            raise serializers.ValidationError(f'You are not a {Profile.Roles.labels[event.to].capitalize()}!')
         event: Event = event.first()
 
         participant = Profile.objects.filter(user=voter, role=event.to)

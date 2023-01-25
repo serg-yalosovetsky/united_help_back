@@ -23,22 +23,16 @@ firebase_admin.initialize_app(cred)
 ALLOWED_HOSTS = ['*']
 
 sentry_sdk.init(
-    dsn="https://b5f550f2d9874bc1aad2751d164a730d@sentry.fyuzd.live/3",
+    dsn="https://33078d724f4d4c04aff31f10b8f71725@sentry.fyuzd.live/6",
     integrations=[DjangoIntegration()],
 
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    # We recommend adjusting this value in production.
     traces_sample_rate=1.0,
 
-    # If you wish to associate users to errors (assuming you are using
-    # django.contrib.auth) you may enable sending PII data.
     send_default_pii=True,
     _experiments={
         "profiles_sample_rate": 1.0,
       },
 )
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
