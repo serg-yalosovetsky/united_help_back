@@ -1,39 +1,34 @@
 import datetime
 
 from django.db.models import Q
+from django.utils.timezone import make_aware
 
-from united_help.celery import app
-from united_help.models import User, Event, Profile
+from united_help.models import Event, Profile
 from datetime import date
 
 
-from celery import shared_task
-from celery.schedules import crontab
 
-from united_help.serializers import FinishEventSerializer
 from united_help.services import send_firebase_multiple_messages
 from united_help.settings import BASE_URL
 from united_help.views import finish_event
+#
+#
+# @app.on_after_configure.connect
+# def setup_periodic_tasks(sender, **kwargs):
+#
+#     # Executes every Monday morning at 7:30 a.m.
+#     sender.add_periodic_task(
+#         crontab(hour=0, minute=10,),
+#         event_start_tomorrow.s(),
+#     )
+#     sender.add_periodic_task(300.0, event_finished.s(), name='check finished events')
 
 
-@app.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs):
-
-    # Executes every Monday morning at 7:30 a.m.
-    sender.add_periodic_task(
-        crontab(hour=18, minute=30,),
-        event_start_tomorrow.s(),
-    )
-
-    sender.add_periodic_task(300.0, event_finished.s(), name='check finished events')
-
-
-
-
-@app.task
+# @shared_task
 def event_start_tomorrow():
-    tomorrow = date.today() + datetime.timedelta(days=1)
-    after_tomorrow = date.today() + datetime.timedelta(days=2)
+    print('event_start_tomorrow')
+    tomorrow = make_aware(date.today() + datetime.timedelta(days=1))
+    after_tomorrow = make_aware(date.today() + datetime.timedelta(days=2))
     events = Event.objects.filter(
         Q(active=True) & Q(start_time__range=(tomorrow, after_tomorrow))
     )
@@ -64,11 +59,11 @@ def event_start_tomorrow():
         )
 
 
-
-@app.task
+# @shared_task
 def event_finished():
-    now = datetime.datetime.now()
-    now_plus_6_min = now + datetime.timedelta(minutes=6)
+    print('event_finished')
+    now = make_aware(datetime.datetime.now())
+    now_plus_6_min = make_aware(datetime.datetime.now() + datetime.timedelta(minutes=6))
     events = Event.objects.filter(
         Q(active=True) & Q(end_time__range=(now, now_plus_6_min))
     )

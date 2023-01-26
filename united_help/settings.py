@@ -45,14 +45,13 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'social_django',
     'drf_social_oauth2',
-    'united_help',
+    'united_help.apps.UnitedHelpConfig',
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',
     'debug_toolbar',
     'rest_framework_simplejwt',
     'django_filters',
-    'django_celery_results',
 ]
 
 REST_FRAMEWORK = {
@@ -183,3 +182,4 @@ BASE_URL = ''
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

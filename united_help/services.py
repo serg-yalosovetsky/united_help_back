@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 from firebase_admin import messaging
 from rest_framework.utils import json
 import requests
@@ -133,3 +136,53 @@ def send_firebase_multiple_messages(title: str, message: str, users: list[User] 
     else:
         print('[FIREBASE] tokens are empty')
         return {'success_count': 0, 'len_devices_tokens': 0}
+
+
+def get_workers_pids(_list=None):
+    print('get_workers_pids')
+
+    '''
+    Для работы этой функции в енвайронментах конфига систмд сервиса должна быть строка пути
+    (путь в конфиги - nano /etc/systemd/system/fyuzd-auth.service.d/env.conf)
+    Environment="PATH=/home/fyuzd/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+    должна быть установлена тулза jc: pip3 install jc
+    путь должен быть в перечне путей
+    ln -s /var/lib/fyuzd/venv/bin/jc /usr/local/bin/jc
+    в /home/fyuzd должен быть process.sh c пермишенами на исполнение:
+    #!/bin/bash
+    #jc ps -ef
+    ps -ef |grep gunicorn
+
+    суть в том, чтобы получить список процесс_ид все воркеров гуникорна, и также получить свой процесс_ид текущего воркера
+    если текущий воркер является первым в списке (т.е. минимальным) - то в нем запускается листенер
+    '''
+    try:
+        if _list is None:
+            _list = '/home/fyuzd/process.sh'
+        process = subprocess.Popen(_list,
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE,
+                                   )
+        stdout, _ = process.communicate()
+        list_stdout = str(stdout).split('fyuzd ')
+        pids = []
+        for _stdout in list_stdout:
+            _s = _stdout.split()
+            if len(_s) > 1 and str(_s[1]) != '1':
+                pids.append(_s[0])
+
+        pid = os.getpid()
+        pids.sort()
+        print(f'{pid=}')
+        print(f'{pids=}')
+        listener = False
+        if len(pids) > 0 and str(pid) == pids[0]:
+            listener = True
+        elif len(pids) == 0:
+            listener = True
+        return listener
+    except Exception as e:
+        print(e)
+        # если возник ексепшн, то скорее всего гуникорн не используется - существует только один воркер
+        return True
