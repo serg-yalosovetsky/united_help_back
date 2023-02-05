@@ -11,7 +11,8 @@ class User(DjangoUser):
     telegram_phone = PhoneNumberField(null=True, blank=True, unique=False)
     viber_phone = PhoneNumberField(null=True, blank=True, unique=False)
     reg_date = models.DateTimeField(auto_now_add=True)
-    firebase_tokens = models.TextField(default='')
+    firebase_tokens = models.TextField(default='', blank=True)
+    facebook_token = models.TextField(default='', blank=True)
     following = models.ManyToManyField('Profile', related_name='following', blank=True)
 
     def __repr__(self):

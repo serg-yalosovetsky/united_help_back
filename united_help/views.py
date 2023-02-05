@@ -1,8 +1,13 @@
+import base64
+import hashlib
+import hmac
 import json
 from contextlib import suppress
 from datetime import datetime as dt
 
 from django.http import Http404, HttpResponseBadRequest
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import permissions, viewsets, status
 from rest_framework.decorators import api_view
@@ -11,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
 
+from united_help import settings
 from united_help.helpers import str_to_bool, index_in_list, DATETIME_FORMAT
 from united_help.permissions import IsOrganizerOrReadOnly, IsAdminOrReadOnly, \
     IsAuthenticatedOrCreateOnly, IsAdmin, IsVolunteer, IsAdminOrOwnerOrCreateOnly, IsOrganizer, IsVolunteerOrRefugee
@@ -698,7 +704,7 @@ class UserProfileView(RetrieveAPIView):
 
 
 class ProfileView(viewsets.ModelViewSet):
-    http_method_names = ['get', 'post', 'patch', 'put', 'delete', 'head', 'options', 'trace']
+    http_method_names = ['get', 'post', 'patch', 'put', 'delete', 'head']
     permission_classes = [permissions.IsAuthenticated, IsAdminOrOwnerOrCreateOnly]
     serializer_class = ProfileSerializer
     queryset = Profile.objects.all()
@@ -850,3 +856,44 @@ class VotingView(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = VotingSerializer
     queryset = Voting.objects.all()
+
+
+# @method_decorator(csrf_exempt, name='dispatch')
+class DataDeletionView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            signed_request = request.POST['signed_request']
+            encoded_sig, payload = signed_request.split('.')
+        except(ValueError, KeyError):
+            return Response('Invalid request', status=400)
+        
+        try:
+            decoded_payload = base64.urlsafe_b64decode(payload + '==').decode('utf-8')
+            decoded_payload = json.loads(decoded_payload)
+            if type(decoded_payload) is not dict or 'user_id' not in decoded_payload.keys():
+                return Response('Invalid payload data', status=400)
+        except(ValueError, json.JSONDecodeError):
+            return Response('Could not decode payload', status=400,)
+        
+        try:
+            secret = settings.FACEBOOK_SECRET_KEY
+            sig = base64.urlsafe_b64decode(encoded_sig + '==')
+            expected_sig = hmac.new(bytes(secret, 'utf-8'), bytes(payload, 'utf-8'), hashlib.sha256)
+        except Exception:
+            return Response('Could not decode signature', status=400)
+        
+        if not hmac.compare_digest(expected_sig.digest(), sig):
+            return Response('Invalid request', status=400)
+        
+        user_id = decoded_payload['user_id']
+
+        try:
+            user = User.objects.filter(facebook_token=user_id).first()
+            if user:
+                user.delete()
+                return Response(status=201)
+            return Response(status=404)
+            
+        except Exception:
+            return Response(status=200)
+        

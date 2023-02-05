@@ -11,7 +11,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from united_help.views import ActivateProfileView, EventSubscribeView, EventUnsubscribeView, EventsSubscribedView, \
     MeUserView, MeProfilesView, FinishEventView, CancelEventView, ActivateEventView, EventsCreatedView, \
     EventsAttendedView, EventsFinishedView, CommentsEventView, UserCommentsEventView, ContactsView, \
-    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView, ProfileUnsubscribeView, RateParticipantsView
+    UserAddFirebaseTokenView, UserProfileView, ProfileSubscribeView, ProfileUnsubscribeView, RateParticipantsView, \
+    DataDeletionView
 
 router = routers.SimpleRouter()
 router.register(r'users', views.UserView)
@@ -55,6 +56,7 @@ urlpatterns = [
 
     path('users/me/', MeUserView.as_view()),
     path('users/me/add_fb_token/', UserAddFirebaseTokenView.as_view()),
+    path('users/me/delete_sensitive_data/', DataDeletionView.as_view()),
 
     path('profiles/me/', MeProfilesView.as_view()),
     path('profiles/contacts/', ContactsView.as_view()),

@@ -10,6 +10,7 @@ from django.core import exceptions as django_exceptions
 
 class ProfileSerializer(serializers.ModelSerializer):
     is_subscribe = serializers.SerializerMethodField()
+    image = Base64ImageField()
 
     def get_is_subscribe(self, obj):
         if request := self.context.get('request'):
@@ -253,7 +254,7 @@ class FinishEventSerializer(serializers.ModelSerializer):
         fields = ('id', 'active', 'name', 'description', 'reg_date',
                   'start_time', 'end_time', 'image', 'city', 'location',
                   'employment', 'owner', 'participants', 'skills', 'to',
-                  'required_members', 'volunteers_attended')
+                  'required_members', 'volunteers_attended', 'message',)
 
 
 class VotingSerializer(serializers.ModelSerializer):

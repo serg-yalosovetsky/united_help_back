@@ -183,3 +183,5 @@ BASE_URL = ''
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+FACEBOOK_SECRET_KEY = 'be6859ee267101c262db779cd948c2a1'
