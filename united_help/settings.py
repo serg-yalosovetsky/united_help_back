@@ -20,8 +20,9 @@ cred = credentials.Certificate('ua-org-united-help-firebase-adminsdk.json')
 firebase_admin.initialize_app(cred)
 
 
-ALLOWED_HOSTS = ['https://united-help.pp.ua/', 'localhost', '127.0.0.1']
-CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS
+ALLOWED_HOSTS = ['united-help.pp.ua/', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['https://united-help.pp.ua/', 'http://localhost', 'http://127.0.0.1',
+                        'http://localhost:8000', 'http://127.0.0.1:8000']
 
 sentry_sdk.init(
     dsn="https://33078d724f4d4c04aff31f10b8f71725@sentry.fyuzd.live/6",
