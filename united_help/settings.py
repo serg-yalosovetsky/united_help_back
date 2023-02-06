@@ -20,7 +20,7 @@ cred = credentials.Certificate('ua-org-united-help-firebase-adminsdk.json')
 firebase_admin.initialize_app(cred)
 
 
-ALLOWED_HOSTS = ['united-help.pp.ua', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['united-help.pp.ua', 'localhost', '127.0.0.1', '46.101.223.51', '10.80.40.8']
 CSRF_TRUSTED_ORIGINS = ['https://united-help.pp.ua', 'http://localhost', 'http://127.0.0.1',
                         'http://localhost:8000', 'http://127.0.0.1:8000']
 

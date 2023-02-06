@@ -15,6 +15,7 @@ from rest_framework.generics import UpdateAPIView, GenericAPIView, get_object_or
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q
+from rest_framework.exceptions import ValidationError
 
 from united_help import settings
 from united_help.helpers import str_to_bool, index_in_list, DATETIME_FORMAT
@@ -686,7 +687,6 @@ class MeProfilesView(ListAPIView):
         profiles = self.queryset.filter(active=True, user=self.request.user)
         return profiles
 
-
 class UserProfileView(RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserProfileSerializer
@@ -694,7 +694,24 @@ class UserProfileView(RetrieveAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         profile_id = kwargs.get('pk')
-        profile = Profile.objects.filter(id=profile_id).first()
+        profiles = Profile.objects.filter(user=request.user)
+
+        if isinstance(profile_id, str):
+            profile_id = profile_id.lower()
+            if profile_id == 'me':
+                profile_id = profiles.first().pk
+
+            profile_id = profile_id.capitalize()
+            if profile_id in Profile.Roles.labels:
+                for i, role in enumerate(Profile.Roles.labels):
+                    if profile_id == role:
+                        profile_id = i
+                profile_id = profiles.filter(role=profile_id).first().pk
+
+        try:
+            profile = Profile.objects.filter(id=profile_id).first()
+        except ValueError:
+            raise ValidationError('invalid profile_id')
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 

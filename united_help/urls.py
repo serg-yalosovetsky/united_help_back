@@ -60,7 +60,7 @@ urlpatterns = [
 
     path('profiles/me/', MeProfilesView.as_view()),
     path('profiles/contacts/', ContactsView.as_view()),
-    path('userprofile/<int:pk>/', UserProfileView.as_view()),
+    path('userprofile/<str:pk>/', UserProfileView.as_view()),
 
     path('profiles/<int:pk>/subscribe/', ProfileSubscribeView.as_view()),
     path('profiles/<int:pk>/unsubscribe/', ProfileUnsubscribeView.as_view()),
