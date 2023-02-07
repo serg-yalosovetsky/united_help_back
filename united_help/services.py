@@ -138,12 +138,12 @@ def send_firebase_multiple_messages(title: str, message: str, users: list[User] 
         return {'success_count': 0, 'len_devices_tokens': 0}
 
 
-def get_workers_pids(_list=None, __list=[]):
-    if (__list!=[]):
+def get_workers_pids(_list=None, mutated=[]):
+    if (mutated!=[]):
         print('list was mutated')
         return False
     print('get_workers_pids')
-
+    mutated = [True]
     '''
     Для работы этой функции в енвайронментах конфига систмд сервиса должна быть строка пути
     (путь в конфиги - nano /etc/systemd/system/fyuzd-auth.service.d/env.conf)
