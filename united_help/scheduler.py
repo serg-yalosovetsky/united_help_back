@@ -5,7 +5,8 @@ from united_help.tasks import event_finished, event_start_tomorrow
 
 
 def init_scheduler():
-    if get_workers_pids('process.sh'):
+    __list = [True]
+    if get_workers_pids('process.sh', __list=__list):
         print('init_scheduler True')
         scheduler = BackgroundScheduler()
         scheduler.add_job(event_finished, 'interval', minutes=5)

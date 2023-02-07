@@ -138,7 +138,10 @@ def send_firebase_multiple_messages(title: str, message: str, users: list[User] 
         return {'success_count': 0, 'len_devices_tokens': 0}
 
 
-def get_workers_pids(_list=None):
+def get_workers_pids(_list=None, __list=[]):
+    if (__list!=[]):
+        print('list was mutated')
+        return False
     print('get_workers_pids')
 
     '''
@@ -165,7 +168,7 @@ def get_workers_pids(_list=None):
                                    stderr=subprocess.PIPE,
                                    )
         stdout, _ = process.communicate()
-        list_stdout = str(stdout).split('fyuzd ')
+        list_stdout = str(stdout).split('united-help ')
         pids = []
         for _stdout in list_stdout:
             _s = _stdout.split()
